@@ -21,8 +21,9 @@ import os
 import re
 import sys
 from robot.libraries import BuiltIn
-import robot.runner as runner
 from robot.utils import html_escape, ArgumentParser
+from robot.version import get_version
+
 
 class Parallel(object):
     """
@@ -70,7 +71,7 @@ class Parallel(object):
         self._data_source = None
 
     def _get_arguments(self, additional_arguments):
-        options,_ = ArgumentParser(runner.__doc__).parse_args(sys.argv[1:], argfile='argumentfile', unescape='escape')
+        options,_ = ArgumentParser(_get_cmd_arguments()).parse_args(sys.argv[1:], argfile='argumentfile', unescape='escape')
         args = []
         for arg in ['loglevel', 'runmode', 'pythonpath', 'variable', 'variablefile']:
            args += self._get_type_arguments(options, arg)
@@ -282,3 +283,13 @@ class _ParaRobo(object):
         except AttributeError:
             pass
         self.report()
+
+
+def _get_cmd_arguments():
+    import robot
+    runner_path = os.path.join(os.path.dirname(os.path.abspath(robot.__file__)),
+                               'runner.py')
+    with open(runner_path, 'r') as runner_file:
+        runner_content = runner_file.read()
+    return re.search('"""(.+)"""', runner_content, re.DOTALL).groups()[0]
+
