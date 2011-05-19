@@ -422,9 +422,9 @@ after
 | t | a | b | l | e |  
 ---
 '''[1:-1]
-        exp = '<hr />\n<br />\n' \
+        exp = '<hr />\n' \
             + _format_table([['t','a','b','l','e']]) \
-            + '<br />\n<hr />\n'
+            + '<hr />\n'
         assert_equals(html_escape(inp, True), exp)
 
 
@@ -502,6 +502,29 @@ class TestHtmlAttrEscape(unittest.TestCase):
         for inp, exp in [ ('\n', ' '), ('\t', ' '), ('"\n\t"', '&quot;  &quot;'), 
                           ('N1\nN2\n\nT1\tT3\t\t\t', 'N1 N2  T1 T3   ') ]:
             assert_equals(html_attr_escape(inp), exp)
+
+
+class TestHtmlEscapeWhiteSpace(unittest.TestCase):
+
+    def test_escape_spaces(self):
+        for inp, exp in [('  ' , ' &nbsp;'),
+                         ('   ', ' &nbsp; '),
+                         ('\n' , ''),
+                         ('X\n' , 'X'),
+                         ('\nX' , '<br />\nX'),
+                         ('"\n\n"' , '"<br />\n<br />\n"'),
+                         ('"\t"' , '"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"')]:
+            assert_equals(html_escape(inp), exp)
+
+    def test_dont_escape_spaces(self):
+        for inp      in ['',
+                         '"  "',
+                         '"   "',
+                         '"\n"',
+                         '\nX\nX\nX\nX'
+                         '"\t"',
+                         '"    \t\n\n \n \n   "']:
+            assert_equals(html_escape(inp, replace_whitespace=False), inp)
 
 
 if __name__ == '__main__':
