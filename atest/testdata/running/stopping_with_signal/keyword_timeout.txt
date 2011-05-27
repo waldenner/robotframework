@@ -1,0 +1,24 @@
+*** Settings ***
+Library  Library.py
+Library  OperatingSystem
+Suite Teardown  Sleep  ${TEARDOWN SLEEP}
+
+*** Variables ***
+${TEARDOWN SLEEP} =  0 seconds
+${TESTSIGNALFILE} =  test_signal_file.txt
+
+*** Test Case ***
+Test
+  Create File  ${TEMPDIR}/${TESTSIGNALFILE}
+  Timeout In UK
+  No operation
+
+Test 2
+  No operation
+
+*** Keywords ***
+Timeout In UK
+  [Timeout]  3 seconds
+  Busy Sleep  2
+  No operation
+
