@@ -1,16 +1,16 @@
 window.basemillis = 1000000000000;
 
-describe("Handling Strings", function () {
+describe("Text decoder", function () {
 
     it("should have empty string with id 0", function () {
         window.strings = ["*"];
-        var empty = window.testdata.getString(0);
+        var empty = texts.get(0);
         expect(empty).toEqual("");
     });
 
     it("should uncompress", function () {
         window.strings = ["*", "eNorzk3MySmmLQEASKop9Q=="];
-        var decompressed = window.testdata.getString(1);
+        var decompressed = texts.get(1);
         var expected = "";
         for(var i = 0; i < 20; i++){
             expected += "small";
@@ -20,7 +20,7 @@ describe("Handling Strings", function () {
 
     it("should handle plain text", function () {
         window.strings = ["*", "*plain text"];
-        var actual = window.testdata.getString(1);
+        var actual = texts.get(1);
         expect(actual).toEqual("plain text");
     });
 });
@@ -172,14 +172,14 @@ describe("Setups and teardowns", function () {
 });
 
 
-describe("Handling short time formatting", function (){
+describe("Short time formatting", function (){
 
     it("should pad 0 values to full length", function () {
-        expect(window.testdata.shortTime(0,0,0,0)).toEqual("00:00:00.000");
+        expect(window.model.shortTime(0,0,0,0)).toEqual("00:00:00.000");
     });
 
     it("should pad non empty number to full length", function () {
-        expect(window.testdata.shortTime(12,5,55,101)).toEqual("12:05:55.101");
+        expect(window.model.shortTime(12,5,55,101)).toEqual("12:05:55.101");
     });
 });
 

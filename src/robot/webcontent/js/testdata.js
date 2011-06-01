@@ -23,17 +23,8 @@ window.testdata = (function () {
         return new Date(window.basemillis + millis);
     }
 
-    function decode(text){
-        return (text[0] == '*' ? text.substring(1) : extract(text));
-    }
-
-    function extract(text) {
-        return JXG.Util.utf8Decode(
-                (new JXG.Util.Unzip(JXG.Util.Base64.decodeAsArray(text))).unzip()[0][0]);
-    }
-
     function get(id){
-        return decode(window.strings[id]);
+        return texts.get(id)
     }
 
     function times(stats){
@@ -261,17 +252,6 @@ window.testdata = (function () {
         }
     }
 
-    function padTo(number, len){
-        var numString = number + "";
-        while(numString.length < len) numString = "0"+numString;
-        return numString;
-    }
-
-    function shortTime(hours, minutes, seconds, milliseconds){
-        return padTo(hours, 2)+":"+padTo(minutes, 2)+":"+padTo(seconds, 2)+
-                "."+padTo(milliseconds, 3);
-    }
-
     function generated(){
         return timestamp(window.data[0]);
     }
@@ -295,10 +275,25 @@ window.testdata = (function () {
         pathToSuite: pathToSuite,
         pathToKeyword: pathToKeyword,
         generated: generated,
-        getString: get,
-        shortTime: shortTime,
         statistics: statistics
     };
 
 }());
 
+window.texts = (function () {
+
+    function decode(text) {
+        return (text[0] == '*' ? text.substring(1) : extract(text));
+    }
+
+    function extract(text) {
+        var decoded = JXG.Util.Base64.decodeAsArray(text);
+        var extracted = (new JXG.Util.Unzip(decoded)).unzip()[0][0];
+        return JXG.Util.utf8Decode(extracted);
+    }
+
+    return {
+        get: function (id) { return decode(window.strings[id]); }
+    };
+
+})();
