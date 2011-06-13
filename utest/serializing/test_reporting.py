@@ -1,7 +1,9 @@
 import unittest
+from robot.output.logger import Logger
 from robot.output.readers import ExecutionErrors
 import resources
 from robot.common.model import BaseTestSuite
+import robot.output
 from robot.serializing.testoutput import Reporter
 import robot.serializing.testoutput
 
@@ -68,9 +70,15 @@ class TestReporting(unittest.TestCase):
             'EndTime': 0,
             'LogLevel': 'INFO'
         }
+        self._original_logger = robot.serializing.testoutput.LOGGER
+        robot.serializing.testoutput.LOGGER = Logger()
+        robot.serializing.testoutput.LOGGER.disable_automatic_console_logger()
         self._log_results = set_serialize_log_mock()
         self._report_results = set_serialize_report_mock()
         #self._process_outputs_results = set_process_outputs_mock()
+
+    def tearDown(self):
+        robot.serializing.testoutput.LOGGER = self._original_logger
 
     def test_generate_report_and_log(self):
         self._settings['Log'] = 'log.html'
@@ -101,7 +109,7 @@ class TestReporting(unittest.TestCase):
     def test_multiple_outputs(self):
         self._settings['Log'] = 'log.html'
         self._settings['Report'] = 'report.html'
-        self._reporter.execute(self._settings, *[resources.GOLDEN_OUTPUT, resources.GOLDEN_OUTPUT2])
+        self._reporter.execute_rebot(self._settings, *[resources.GOLDEN_OUTPUT, resources.GOLDEN_OUTPUT2])
         self._assert_expected_log('log.html')
         self._assert_expected_report('report.html')
 
