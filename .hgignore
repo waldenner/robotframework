@@ -1,0 +1,10 @@
+syntax: glob
+
+tmp
+build
+dist
+atest/results
+.idea
+.*project
+*.pyc
+*$py.class
