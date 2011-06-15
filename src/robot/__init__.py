@@ -14,7 +14,6 @@
 
 import sys
 import os
-from robot.serializing.testoutput import Reporter
 
 if __name__ == '__main__':
     sys.stderr.write("Use 'runner' or 'rebot' for executing.\n")
@@ -45,7 +44,7 @@ if 'pythonpathsetter' not in sys.modules:
 from output import Output, LOGGER, pyloggingconf
 from conf import RobotSettings, RebotSettings
 from running import TestSuite, STOP_SIGNAL_MONITOR
-from serializing import RobotTestOutput, RebotTestOutput
+from robot.result import ResultWriter
 from errors import (DataError, Information, INFO_PRINTED, DATA_ERROR,
                     STOPPED_BY_USER, FRAMEWORK_ERROR)
 from variables import init_global_variables
@@ -129,7 +128,7 @@ def run(*datasources, **options):
     output.close(suite)
     if settings.is_rebot_needed():
         output, settings = settings.get_rebot_datasource_and_settings()
-        Reporter(settings).execute(output)
+        ResultWriter(settings).write_robot_results(output)
     LOGGER.close()
     return suite
 
@@ -152,7 +151,7 @@ def run_rebot(*datasources, **options):
     settings = RebotSettings(options)
     LOGGER.register_console_logger(colors=settings['MonitorColors'])
     LOGGER.disable_message_cache()
-    suite = Reporter(settings).execute_rebot(*datasources)
+    suite = ResultWriter(settings).write_rebot_results(*datasources)
     LOGGER.close()
     return suite
 

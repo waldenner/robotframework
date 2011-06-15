@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os.path
 import copy
 
 from robot.output import LOGGER
@@ -24,8 +25,8 @@ from testlibraries import TestLibrary
 class Importer:
 
     def __init__(self):
-        self._libraries = _LibraryCache()
-        self._resources = _LibraryCache()
+        self._library_cache = ImportCache()
+        self._resource_cache = ImportCache()
 
     def import_library(self, name, args, alias, variables):
         lib = TestLibrary(name, args, variables, create_handlers=False)
@@ -37,21 +38,21 @@ class Importer:
         return lib
 
     def import_resource(self, path):
-        if self._resources.has_key(path):
+        if path in self._resource_cache:
             LOGGER.info("Found resource file '%s' from cache" % path)
         else:
             resource = ResourceFile(path)
-            self._resources[path] = resource
-        return self._resources[path]
+            self._resource_cache[path] = resource
+        return self._resource_cache[path]
 
     def _import_library(self, name, positional, named, lib):
         key = (name, positional, named)
-        if self._libraries.has_key(key):
+        if key in self._library_cache:
             LOGGER.info("Found test library '%s' with arguments %s from cache"
                         % (name, utils.seq2str2(positional)))
-            return self._libraries[key]
+            return self._library_cache[key]
         lib.create_handlers()
-        self._libraries[key] = lib
+        self._library_cache[key] = lib
         libtype = lib.__class__.__name__.replace('Library', '').lower()[1:]
         LOGGER.info("Imported library '%s' with arguments %s (version %s, "
                     "%s type, %s scope, %d keywords, source %s)"
@@ -73,23 +74,35 @@ class Importer:
         return libcopy
 
 
-class _LibraryCache:
-    """Cache for libs/resources that doesn't require mutable keys like dicts"""
+class ImportCache:
+    """Cache for libraries and resources.
+
+     Unlike dicts, this storage accepts mutable values as keys.
+     """
 
     def __init__(self):
         self._keys = []
-        self._libs = []
+        self._items = []
 
-    def __setitem__(self, key, library):
-        self._keys.append(key)
-        self._libs.append(library)
+    def __setitem__(self, key, item):
+        self._keys.append(self._norm_path_key(key))
+        self._items.append(item)
+
+    def add(self, key):
+        self.__setitem__(key, None)
 
     def __getitem__(self, key):
-        try:
-            return self._libs[self._keys.index(key)]
-        except ValueError:
+        key = self._norm_path_key(key)
+        if key not in self._keys:
             raise KeyError
+        return self._items[self._keys.index(key)]
 
-    def has_key(self, key):
-        return key in self._keys
+    def __contains__(self, key):
+        return self._norm_path_key(key) in self._keys
 
+    def _norm_path_key(self, key):
+        if isinstance(key, basestring) and os.path.exists(key):
+            return utils.normpath(key, normcase=True)
+        if isinstance(key, (tuple, list)):
+            return [self._norm_path_key(k) for k in key]
+        return key

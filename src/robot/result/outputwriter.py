@@ -12,6 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from robot.output import XmlLogger
 
-from testoutput import RobotTestOutput, RebotTestOutput
-from templating import Template, Namespace
+
+class OutputWriter(XmlLogger):
+
+    def __init__(self, path):
+        XmlLogger.__init__(self, path, generator='Rebot')
+
+    def message(self, msg):
+        self._write_message(msg)
+
