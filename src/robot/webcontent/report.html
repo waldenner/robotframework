@@ -1,0 +1,562 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+<META HTTP-EQUIV="Expires" CONTENT="-1">
+
+<link rel="stylesheet" type="text/css" href="common.css" media="all"/>
+<link rel="stylesheet" type="text/css" href="report.css" media="all"/>
+<link rel="stylesheet" type="text/css" href="print.css" media="print"/>
+<script type="text/javascript" src="lib/jquery.min.js"></script>
+<script type="text/javascript" src="lib/jquery.tmpl.min.js"></script>
+<!-- OUTPUT JS --><script type="text/javascript" src="testdata/data.js"></script>
+<script type="text/javascript" src="lib/jsxcompressor.js"></script>
+<script type="text/javascript" src="model.js"></script>
+<script type="text/javascript" src="util.js"></script>
+<script type="text/javascript" src="testdata.js"></script>
+<script type="text/javascript" src="stats.js"></script>
+
+<title>[SUITE_NAME] Test Report</title>
+</head>
+<body>
+  <div class="header" id="header_div">
+  </div>
+  <h2>Test Statistics</h2>
+  <table class="statistics" id="total_stats">
+    <tr>
+      <th class="col_stat_name">Total Statistics</th>
+      <th class="col_stat">Total</th>
+      <th class="col_stat">Pass</th>
+      <th class="col_stat">Fail</th>
+      <th class="col_graph">Graph</th>
+    </tr>
+  </table>
+  <table class="statistics" id="tag_stats">
+    <tr>
+      <th class="col_stat_name">Statistics by Tag</th>
+      <th class="col_stat">Total</th>
+      <th class="col_stat">Pass</th>
+      <th class="col_stat">Fail</th>
+      <th class="col_graph">Graph</th>
+    </tr>
+  </table>
+  <table class="statistics" id="suite_stats">
+    <tr>
+      <th class="col_stat_name">Statistics by Suite</th>
+      <th class="col_stat">Total</th>
+      <th class="col_stat">Pass</th>
+      <th class="col_stat">Fail</th>
+      <th class="col_graph">Graph</th>
+    </tr>
+  </table>
+  <div id="test_details_container"></div>
+
+<script type="text/javascript">
+$(document).ready(function () {
+    var topsuite = window.testdata.suite();
+    setBackground(topsuite);
+    setDocumentTitle(topsuite);
+    window.templates = initTemplates();
+    addHeader();
+    addSummary(topsuite);
+    addStatistics();
+    if (window.location.hash) {
+        showDetailsByHash();
+    } else {
+        renderTotalSelector("no_selection");
+    }
+    $('#test_details_container').css('min-height', $(window).height());
+});
+
+function addSummary(topsuite) {
+    $.tmpl(window.templates.summaryTable, topsuite, {logURL:window.settings.logURL}).insertAfter($('#header_div'));
+}
+
+function showTotalsTab() {
+    renderTotalSelector('totals');
+}
+
+function showTagsTab() {
+    renderTagsSelector('tags');
+}
+
+function showSuitesTab() {
+    renderSuiteSelector('suites');
+}
+
+function renderTotalSelector(linkTarget) {
+    emptyDetails();
+    var args = {linkTarget: linkTarget, totals_tab_status: 'tab_selected'};
+    $.tmpl(window.templates.detailsHeader, args).appendTo('#test_details_container');
+    $.tmpl(window.templates.totalDetailsSelector).appendTo('#test_details_container');
+}
+
+function renderTagsSelector(linkTarget) {
+    emptyDetails();
+    var args = {linkTarget: linkTarget, tags_tab_status: 'tab_selected'};
+    var tagstats = {tags: window.testdata.statistics().tag};
+    $.tmpl(window.templates.detailsHeader, args).appendTo('#test_details_container');
+    $.tmpl(window.templates.tagDetailsSelector, tagstats).appendTo('#test_details_container');
+}
+
+function renderSuiteSelector(linkTarget) {
+    emptyDetails();
+    var args = {linkTarget: linkTarget, suites_tab_status: 'tab_selected'};
+    var suitestats = {suites: window.testdata.statistics().suite};
+    $.tmpl(window.templates.detailsHeader, args).appendTo('#test_details_container');
+    $.tmpl(window.templates.suiteDetailsSelector, suitestats).appendTo('#test_details_container');
+}
+
+function emptyDetails(){
+    window.tasks = [];
+    $('#test_details_container').empty();
+}
+
+function totalDetailSelected(type) {
+    if (type == "") return;
+    renderTotalSelector("total_"+type);
+    renderTotalDetails(type);
+    ensureTotalDetailsAreVisible(type);
+}
+
+function tagDetailSelected(name) {
+    if (name == "") return;
+    renderTagsSelector("tag_"+name);
+    var alltags = window.testdata.statistics().tag;
+    var tag = findTagByName(name, alltags);
+    renderDetailsByTag(tag);
+    ensureTagDetailsAreVisible(name);
+}
+
+function suiteDetailSelected(name) {
+    if (name == "") return;
+    renderSuiteSelector("suite_"+name);
+    renderDetailsBySuite(name);
+    ensureSuiteDetailsAreVisible(name);
+}
+
+function renderTotalDetails(type) {
+    if (type == 'Critical Tests')
+        var stat = window.testdata.statistics().total[0];
+    else
+        var stat = window.testdata.statistics().total[1];
+    var tests = getTotalTests(type)
+    stat.totalTime = calculateTotalTime(tests);
+    $.tmpl(window.templates.tagOrTotalDetails, stat).appendTo('#details_header');
+    drawTestDetailsTable(tests);
+}
+
+function renderDetailsByTag(tag) {
+    var tests = getTestsHavingTag(tag);
+    if (tag) {
+        tag.totalTime = calculateTotalTime(tests);
+    }
+    $.tmpl(window.templates.tagOrTotalDetails, tag).appendTo('#details_header');
+    drawTestDetailsTable(tests);
+}
+
+function renderDetailsBySuite(name) {
+    var suite = testdata.suite().findSuiteByName(name);
+    $.tmpl(window.templates.suiteDetails, suite, {logURL: window.settings.logURL}).appendTo('#details_header');
+    drawTestDetailsTable(suite.allTests())
+}
+
+function drawTestDetailsTable(tests) {
+    $.tmpl(window.templates.testDetailsTable).appendTo('#test_details_container');
+    window.tasks = tests;
+    iterateDetails();
+}
+
+function ensureTotalDetailsAreVisible(type) {
+    document.getElementById('radio_'+type).checked = true;
+    window.location.hash = 'total_'+type
+}
+
+function ensureTagDetailsAreVisible(name) {
+    document.getElementById('tag_detail_selector').value = name;
+    window.location.hash = 'tag_'+name;
+}
+
+function ensureSuiteDetailsAreVisible(name) {
+    document.getElementById('suite_detail_selector').value = name;
+    window.location.hash = 'suite_'+name;
+}
+
+function findTagByName(name, tags) {
+    for (var i=0; i<tags.length; i++) {
+        if (tags[i].label == name)
+            return tags[i];
+    }
+}
+
+function showDetailsByHash() {
+    // TODO: cleanup
+    hash = decodeURI(window.location.hash.substring(1));
+    if(hash.indexOf("suite_")==0){
+        suite = hash.substring("suite_".length);
+        suiteDetailSelected(suite)
+    }
+    else if(hash.indexOf("tag_")==0){
+        tag = hash.substring("tag_".length);
+        tagDetailSelected(tag)
+    }
+    else if(hash.indexOf("total_")==0){
+        type = hash.substring("total_".length);
+        totalDetailSelected(type)
+    }
+    else if(hash=='totals'){
+        showTotalsTab();
+    }
+    else if(hash=='tags'){
+        showTagsTab();
+    }
+    else if(hash=='suites'){
+        showSuitesTab();
+    }
+    window.location.hash = window.location.hash.substring(1);
+}
+
+function sort_failures_first(t1, t2) {
+    if (t1.status != t2.status)
+        return t1.status == 'fail' ? -1 : 1;
+    if (t1.isCritical != t2.isCritical)
+        return t1.isCritical ? -1 : 1;
+    return t1.fullname < t2.fullname ? -1 : 1;
+}
+
+function getTestsHavingTag(tag) {
+    if (!tag)
+        return [];
+    return window.testdata.suite().searchTestsByTag(tag).sort(sort_failures_first);
+}
+
+function getTotalTests(type) {
+    if (type == 'Critical Tests')
+        return window.testdata.suite().criticalTests().sort(sort_failures_first);
+    return window.testdata.suite().allTests().sort(sort_failures_first);
+}
+
+function calculateTotalTime(tests) {
+    var totaltime = 0;
+    $.map(tests, function (test) {
+        totaltime += test.times.elapsedMillis;
+    });
+    return model.formatElapsed(totaltime).split('.')[0];
+}
+
+function setDocumentTitle(suite){
+    document.title = document.title.replace("[SUITE_NAME]", window.settings.title, "g");
+}
+
+// TODO: This is duplicated in log.html
+function addHeader() {
+    var generatedAgoMillis = window.testdata.generated().getTime();
+    var header = $.tmpl(window.templates.header, {
+        header: document.title,
+        generated: window.testdata.generated().toString(),
+        generatedAgo: util.createGeneratedAgoString(generatedAgoMillis)
+    });
+    header.appendTo($('#header_div'));
+}
+
+function setBackground(topsuite) {
+    if (topsuite.criticalFailed)
+        $("body").css("background-color",window.settings.background.fail);
+    else if (topsuite.totalFailed)
+        $("body").css("background-color",window.settings.background.nonCriticalFail);
+    else
+        $("body").css("background-color",window.settings.background.pass);
+}
+
+function iterateDetails(){
+    if (window.tasks.length == 0) {
+        return;
+    }
+    var elements = pop_upto(window.tasks, 50);
+    $.tmpl(window.templates.testDetailsRow, elements, {logURL: window.settings.logURL}).appendTo('#tests_detail_table');
+    if(window.tasks.length > 0)
+        setTimeout("iterateDetails()", 0);
+}
+
+function pop_upto(list, upto) {
+    result = [];
+    while (list.length > 0 && result.length < upto)
+        result.push(list.shift());
+    return result;
+}
+
+function initTemplates() {
+    return {
+        header: $('#header_template').template(),
+        summaryTable: $('#summary_table').template(),
+        totalStatRow: $('#total_statistics_row').template(),
+        tagStatRow: $('#tag_statistics_row').template(),
+        suiteStatRow: $('#suite_statistics_row').template(),
+        noTagsRow: $('#no_tags_row').template(),
+        detailsHeader: $('#details_header').template(),
+        totalDetailsSelector: $('#total_details_selector').template(),
+        tagDetailsSelector: $('#tag_details_selector').template(),
+        suiteDetailsSelector: $('#suite_details_selector').template(),
+        tagOrTotalDetails: $('#tag_or_total_details').template(),
+        suiteDetails: $('#suite_details').template(),
+        testDetailsTable: $('#test_details_table').template(),
+        testDetailsRow: $('#report_test_details_row').template()
+    };
+};
+</script>
+
+<!-- TODO: This is duplicated in log.html -->
+<script type="text/html" id="header_template">
+  <div id="generated">
+    <span>Generated<br />${generated}</span><br />
+    <span id="generated_ago">${generatedAgo} ago</span>
+  </div>
+  <h1>${header}</h1>
+</script>
+
+<script type="text/html" id="summary_table">
+  <h2>Summary Information</h2>
+  <table class="details">
+    <tr>
+      <th>Status:</th>
+        {{if criticalFailed}}
+            <td><a class="status_fail" href="#total_Critical Tests" onClick="totalDetailSelected('Critical Tests')">${criticalFailed} critical test{{if criticalFailed != 1}}s{{/if}} failed</a></td>
+        {{else}}
+            <td><a class="status_pass" href="#total_Critical Tests" onClick="totalDetailSelected('Critical Tests')">All critical tests passed</a></td>
+        {{/if}}
+    </tr>
+    {{if documentation}}
+      <tr><th>Documentation:</th><td>{{html documentation}}</td></tr>
+    {{/if}}
+    {{each metadata}}
+      <tr><th>${$index}:</th><td>{{html $value}}</td></tr>
+    {{/each}}
+    <tr><th>Start Time:</th><td>${times.startTime}</td></tr>
+    <tr><th>End Time:</th><td>${times.endTime}</td></tr>
+    <tr><th>Elapsed Time:</th><td>${times.elapsedTime}</td></tr>
+    {{if $item.logURL}}
+    <tr>
+        <th></th>
+        <td><a href="${$item.logURL}">See log</a></td>
+    </tr>
+    {{/if}}
+  </table>
+</script>
+
+<script type="text/html" id="total_statistics_row">
+  <tr>
+    <td class="col_stat_name">
+      <div class="stat_name">
+        <span title="${doc}"><a href="#total_${label}" onClick="totalDetailSelected('${label}')">${label}</a></span>
+      </div>
+    </td>
+    {{tmpl($data) '#stat_columns'}}
+  </tr>
+</script>
+
+<script type="text/html" id="tag_statistics_row">
+  <tr>
+    <td class="col_stat_name">
+      <div class="stat_name">
+        <a href="#tag_${label}" onclick="tagDetailSelected('${label}');" title="${doc}">${label}</a>
+        ${shownInfo}
+      </div>
+    <div class="tag_links">
+      {{each links}}
+        <span>[<a href="${$value.url}" title="${$value.url}">${$value.title}</a>]</span>
+      {{/each}}
+    </div>
+    </td>
+    {{tmpl($data) '#stat_columns'}}
+  </tr>
+</script>
+
+<script type="text/html" id="suite_statistics_row">
+  <tr>
+    <td class="col_stat_name">
+      <div class="stat_name">
+        <a href="#suite_${fullname}" onclick="suiteDetailSelected('${fullname}');" title="${doc}"><span class="parent_name">${parentName}</span>${name}</a>
+      </div>
+    </td>
+    {{tmpl($data) '#stat_columns'}}
+  </tr>
+</script>
+
+<script type="text/html" id="stat_columns">
+  <td class="col_stat">${total}</td>
+  <td class="col_stat">${pass}</td>
+  <td class="col_stat">${fail}</td>
+  <td class="col_graph">
+    <div class="graph">
+      <b class="pass_bar" style="width: ${passWidth}%;" title="${passPercent}%"></b>
+      <b class="fail_bar" style="width: ${failWidth}%;" title="${failPercent}%"></b>
+    </div>
+  </td>
+</script>
+
+<script type="text/html" id="no_tags_row">
+  <tr>
+    <td class="col_stat_name">No Tags</td>
+    <td class="col_stat"></td>
+    <td class="col_stat"></td>
+    <td class="col_stat"></td>
+    <td class="col_graph">
+      <div class="graph">
+        <b class="no_tags_bar" style="width: 100%;"></b>
+      </div>
+    </td>
+  </tr>
+</script>
+
+<script type="text/html" id="details_header">
+  <h2 id="${linkTarget}">Test Details</h2>
+  <ul id="detail_tabs">
+    <li class="${totals_tab_status}"><a href="#totals" onclick="showTotalsTab();">Totals</a></li>
+    <li class="${tags_tab_status}"><a href="#tags" onclick="showTagsTab();">Tags</a></li>
+    <li class="${suites_tab_status}"><a href="#suites" onclick="showSuitesTab();">Suites</a></li>
+  </ul>
+</script>
+
+<script  type="text/html" id="total_details_selector">
+  <table class="details" id="details_header">
+    <tr id="selector">
+      <th>Type:</th>
+      <td class="normal_whitespace">
+        <input id="radio_Critical Tests" type="radio" name="totals_radio" onclick="totalDetailSelected('Critical Tests');">
+        <label for="radio_Critical Tests">Critical Tests</label><br>
+        <input id="radio_All Tests" type="radio" name="totals_radio" onclick="totalDetailSelected('All Tests');">
+        <label for="radio_All Tests">All Tests</label>
+      </td>
+    </tr>
+  </table>
+</script>
+
+<script  type="text/html" id="tag_details_selector">
+  <table class="details" id="details_header">
+    <tr id="selector">
+      <th>Name:</th>
+      <td class="normal_whitespace">
+        <select id="tag_detail_selector" onchange="tagDetailSelected(this.options[this.selectedIndex].value);">
+          <option value="">Select tag...</option>
+            {{each tags}}
+              <option value="${$value.label}">${$value.label} ${$value.shownInfo}</option>
+            {{/each}}
+        </select>
+      </td>
+    </tr>
+  </table>
+</script>
+
+<script  type="text/html" id="suite_details_selector">
+  <table class="details" id="details_header">
+    <tr id="selector">
+      <th>Name:</th>
+      <td class="normal_whitespace">
+        <select id="suite_detail_selector" onchange="suiteDetailSelected(this.options[this.selectedIndex].value);">
+          <option value="">Select suite...</option>
+            {{each suites}}
+              <option value="${$value.fullname}">${$value.fullname}</option>
+            {{/each}}
+        </select>
+      </td>
+    </tr>
+  </table>
+</script>
+
+
+<script type="text/html" id="tag_or_total_details">
+    {{if doc}}
+    <tr>
+        <th>Documentation:</th>
+        <td>{{html doc}}</td>
+    </tr>
+    {{/if}}
+    <tr>
+        <th>Status:</th>
+        <td>${total} total, ${pass} passed, {{if fail}}<span class="fail">${fail} failed</span>{{else}}<span class="pass">0 failed</span>{{/if}}</td>
+    </tr>
+    {{if links && links.length}}
+    <tr>
+        <th>Links:</th>
+        <td>{{each links}}<a href="${$value.url}" title="${$value.url}">${$value.title}</a>{{/each}} </td>
+    </tr>
+    {{/if}}
+    <tr>
+        <th>Total Time:</th>
+        <td>${totalTime}</td>
+    </tr>
+</script>
+
+<script type="text/html" id="suite_details">
+    {{if $item.logURL}}
+    <tr>
+        <th></th>
+        <td><a href="${$item.logURL}#suite_${fullname}" id="suite_${fullname}" title="${fullname}">See log</a></td>
+    </tr>
+    {{/if}}
+    {{if documentation}}
+    <tr>
+        <th>Documentation:</th>
+        <td>{{html documentation}}</td>
+    </tr>
+    {{/if}}
+    {{each metadata}}
+    <tr><th>${$index}:</th><td>{{html $value}}</td></tr>
+    {{/each}}
+    <tr>
+        <th>Status:</th>
+        <td>{{tmpl($data) '#stats_message_partial_template'}}</td>
+    </tr>
+    {{if message}}
+    <tr>
+        <th>Message:</th>
+        <td>${message}</td>
+     </tr>
+    {{/if}}
+    <tr>
+        <th>Start / End:</th>
+        <td>${times.startTime}  /  ${times.endTime}</td>
+    </tr>
+    <tr>
+        <th>Elapsed:</th>
+        <td>${times.elapsedTime}</td>
+    </tr>
+</script>
+
+<script type="text/html" id="stats_message_partial_template">
+${critical} critical test, ${criticalPassed} passed, <span class="${criticalFailureClass}">${criticalFailed} failed</span><br />${total} test total, ${totalPassed} passed, <span class="${totalFailureClass}">${totalFailed} failed</span>
+</script>
+
+<script type="text/html" id="test_details_table">
+  <table id="tests_detail_table">
+    <tr>
+      <th class="col_name">Name</th>
+      <th class="col_doc">Documentation</th>
+      <th class="col_tags">Tags</th>
+      <th class="col_crit">Crit.</th>
+      <th class="col_status">Status</th>
+      <th class="col_msg">Message</th>
+      <th class="col_times">Start / Elapsed</th>
+    </tr>
+  </table>
+</script>
+
+<script type="text/html" id="report_test_details_row">
+  <tr class="test_row">
+    {{if $item.logURL}}
+    <td class="col_name"><a href="${$item.logURL}#test_${fullname}" id="test_${fullname}" title="${fullname}"><span class="parent_name">${parentName}</span>${name}</a></td>
+    {{else}}
+    <td class="col_name"><span class="parent_name">${parentName}</span>${name}</td>
+    {{/if}}
+    <td class="col_doc">{{html documentation}}</td>
+    <td class="col_tags">${tags.join(', ')}</td>
+    <td class="col_crit">{{if isCritical}}yes{{else}}no{{/if}}</td>
+    <td class="col_status ${status}">${status.toUpperCase()}</td>
+    <td class="col_msg">${message}</td>
+    <td class="col_times">${times.startTime(true)}<br />${times.elapsedTime(true)}</td>
+  </tr>
+</script>
+
+</body>
+</html>
