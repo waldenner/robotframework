@@ -1,0 +1,46 @@
+*** Settings ***
+Suite Setup     Set Runners and generate input files
+Suite Teardown  Remove input files
+Default Tags    regression  pybot  jybot
+Resource        rebot_cli_resource.txt
+
+*** Variables ***
+${PASSING}         ${TEMPDIR}/rebot-testing-passing.xml
+${FAILING}         ${TEMPDIR}/rebot-testing-failing.xml
+${MISCDIR}         ${CURDIR}/../../../testdata/misc
+${PASSING TESTS}   ${MISCDIR}/normal.html
+${FAILING TESTS}   ${MISCDIR}/pass_and_fail.html
+
+*** Test Cases ***
+
+Zero RC when all tests pass
+    Run Rebot and Verify RC    ${PASSING}                    rc=0
+
+Zero RC when all critical tests pass
+    Run Rebot and Verify RC    --critical pass ${FAILING}    rc=0
+
+Non-zero RC when critical tests fail
+    Run Rebot and Verify RC    ${FAILING}                    rc=1
+
+Zero RC when all tests pass with --NoStatusRC
+    Run Rebot and Verify RC    --NoStatusRC ${PASSING}       rc=0
+
+Zero RC when critical tests fail with --NoStatusRC
+    Run Rebot and Verify RC    --nostatusrc ${FAILING}       rc=0
+
+
+*** Keywords ***
+Set runners and generate input files
+    Set runners
+    Run Tests Without Processing Output  ${EMPTY}  ${PASSING TESTS}
+    Move File  ${OUTFILE}  ${PASSING}
+    Run Tests Without Processing Output  ${EMPTY}  ${FAILING TESTS}
+    Move File  ${OUTFILE}  ${FAILING}
+
+Remove input files
+    Remove Files  ${PASSING}  ${FAILING}
+
+Run Rebot and Verify RC
+    [Arguments]  ${options & source}  ${rc}=
+    ${returned}=  Run And Return Rc  ${REBOT} --log NONE --report NONE ${options & source}
+    Should Be Equal As Integers  ${returned}  ${rc}
