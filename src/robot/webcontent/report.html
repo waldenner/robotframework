@@ -17,7 +17,7 @@
 <script type="text/javascript" src="testdata.js"></script>
 <script type="text/javascript" src="stats.js"></script>
 
-<title>[SUITE_NAME] Test Report</title>
+<title></title>
 </head>
 <body>
   <div class="header" id="header_div">
@@ -56,7 +56,7 @@
 $(document).ready(function () {
     var topsuite = window.testdata.suite();
     setBackground(topsuite);
-    setDocumentTitle(topsuite);
+    setDocumentTitle(topsuite.name, window.settings.title);
     window.templates = initTemplates();
     addHeader();
     addSummary(topsuite);
@@ -70,7 +70,8 @@ $(document).ready(function () {
 });
 
 function addSummary(topsuite) {
-    $.tmpl(window.templates.summaryTable, topsuite).insertAfter($('#header_div'));
+    var opts = {logURL: window.settings.logURL};
+    $.tmpl(window.templates.summaryTable, topsuite, opts).insertAfter($('#header_div'));
 }
 
 function showTotalsTab() {
@@ -158,8 +159,9 @@ function renderDetailsByTag(tag) {
 
 function renderDetailsBySuite(name) {
     var suite = testdata.suite().findSuiteByName(name);
-    $.tmpl(window.templates.suiteDetails, suite, {logURL: window.settings.logURL}).appendTo('#details_header');
-    drawTestDetailsTable(suite.allTests())
+    var opts = {logURL: window.settings.logURL};
+    $.tmpl(window.templates.suiteDetails, suite, opts).appendTo('#details_header');
+    drawTestDetailsTable(suite.allTests());
 }
 
 function drawTestDetailsTable(tests) {
@@ -245,16 +247,17 @@ function calculateTotalTime(tests) {
     return model.formatElapsed(totaltime).split('.')[0];
 }
 
-function setDocumentTitle(suite){
-    document.title = document.title.replace("[SUITE_NAME]", window.settings.title, "g");
+// TODO: Duplicated in log.html
+function setDocumentTitle(suiteName, givenTitle) {
+    document.title = givenTitle ? givenTitle : suiteName + " Test Report";
 }
 
 // TODO: This is duplicated in log.html
 function addHeader() {
     var generatedAgoMillis = window.testdata.generated().getTime();
     var header = $.tmpl(window.templates.header, {
-        header: document.title,
-        generated: window.testdata.generated().toString(),
+        title: document.title,
+        generated: window.output.generatedTimestamp,
         generatedAgo: util.createGeneratedAgoString(generatedAgoMillis)
     });
     header.appendTo($('#header_div'));
@@ -312,7 +315,7 @@ function initTemplates() {
     <span>Generated<br />${generated}</span><br />
     <span id="generated_ago">${generatedAgo} ago</span>
   </div>
-  <h1>${header}</h1>
+  <h1>${title}</h1>
 </script>
 
 <script type="text/html" id="summary_table">
@@ -335,6 +338,12 @@ function initTemplates() {
     <tr><th>Start Time:</th><td>${times.startTime}</td></tr>
     <tr><th>End Time:</th><td>${times.endTime}</td></tr>
     <tr><th>Elapsed Time:</th><td>${times.elapsedTime}</td></tr>
+    {{if $item.logURL}}
+    <tr>
+        <th>Log File:</th>
+        <td><a href="${$item.logURL}">${$item.logURL}</a></td>
+    </tr>
+    {{/if}}
   </table>
 </script>
 
@@ -356,11 +365,11 @@ function initTemplates() {
         <a href="#tag_${label}" onclick="tagDetailSelected('${label}');" title="${doc}">${label}</a>
         ${shownInfo}
       </div>
-    <div class="tag_links">
-      {{each links}}
+      <div class="tag_links">
+        {{each links}}
         <span>[<a href="${$value.url}" title="${$value.url}">${$value.title}</a>]</span>
-      {{/each}}
-    </div>
+        {{/each}}
+      </div>
     </td>
     {{tmpl($data) '#stat_columns'}}
   </tr>
@@ -433,9 +442,9 @@ function initTemplates() {
       <td class="normal_whitespace">
         <select id="tag_detail_selector" onchange="tagDetailSelected(this.options[this.selectedIndex].value);">
           <option value="">Select tag...</option>
-            {{each tags}}
-              <option value="${$value.label}">${$value.label} ${$value.shownInfo}</option>
-            {{/each}}
+          {{each tags}}
+          <option value="${$value.label}">${$value.label} ${$value.shownInfo}</option>
+          {{/each}}
         </select>
       </td>
     </tr>
@@ -449,9 +458,9 @@ function initTemplates() {
       <td class="normal_whitespace">
         <select id="suite_detail_selector" onchange="suiteDetailSelected(this.options[this.selectedIndex].value);">
           <option value="">Select suite...</option>
-            {{each suites}}
-              <option value="${$value.fullname}">${$value.fullname}</option>
-            {{/each}}
+          {{each suites}}
+          <option value="${$value.fullname}">${$value.fullname}</option>
+          {{/each}}
         </select>
       </td>
     </tr>
@@ -485,8 +494,8 @@ function initTemplates() {
 <script type="text/html" id="suite_details">
     {{if $item.logURL}}
     <tr>
-        <th></th>
-        <td><a href="${$item.logURL}#suite_${fullname}" id="suite_${fullname}" title="${fullname}">See log</a></td>
+        <th>Log Link:</th>
+        <td><a href="${$item.logURL}#suite_${fullname}" title="${fullname}">${$item.logURL}#suite_${fullname} </a></td>
     </tr>
     {{/if}}
     {{if documentation}}
