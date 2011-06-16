@@ -1,0 +1,393 @@
+Installation and uninstallation
+-------------------------------
+
+.. contents::
+   :depth: 2 
+   :local: 
+
+Introduction
+~~~~~~~~~~~~
+
+There are several ways to install Robot Framework:
+
+`Installing from source`_
+    You can get the source code either as a source distribution
+    package or directly from version control system. In the former
+    case, first extract the package somewhere, and as a result, you
+    have a directory named ``robotframework-<version>``. Detailed
+    instructions follow, but in short, what you need to do is to go to
+    the created directory and run the ``python setup.py install``
+    command.
+
+`Using Windows installer`_
+    There is a special graphical installer for Windows operating system.
+
+`Using Easy Install`_
+    If Python package managing tool `Easy Install`_ is available, installing Robot 
+    Framework is as easy as running command :cli:`easy_install robotframework`. 
+
+`Using One Click Installer`_ 
+    If you are using Windows XP and you do not have preconditions (Python_ and 
+    optional Jython_) installed, you can use `One Click Installer`_ to do all 
+    the needed installations.
+
+`Standalone jar distribution`_
+    If you need to run tests with only Jython, the easiest way to install everything
+    is to downloading the standalone :path:`robotframework-<version>.jar`, which contains
+    both Jython and Robot Framework.
+
+Installation packages are available from
+http://downloads.robotframework.org, and source code from
+http://source.robotframework.org.
+    
+Preconditions
+~~~~~~~~~~~~~
+
+Robot Framework runs both on Python_ and Jython_, and you need to have at least
+one of them to be able to use it. However, some of the provided installers only
+work with Python, so installing it is always recommended.
+
+Python installation
+'''''''''''''''''''
+
+Starting from Robot Framework 2.5, Python 2.5 is the minimum supported Python
+version.  Earlier versions support Python 2.3 or newer. On most UNIX-like
+systems, you have Python installed by default. If you are on Windows or
+otherwise need to install Python yourself, your best place to start is probably
+the `Python homepage`_. There you can download a suitable installer and get
+more information about the installation and Python in general.
+
+.. Note:: Robot Framework is currently not compatible with Python 3.x
+          versions because Python 3.0 was intentionally backwards incompatible with
+          earlier Python releases.
+
+.. Note:: On Windows, and especially on Windows Vista, it is
+          recommended to install Python to all users, and to run the
+          installation as an administrator.
+
+Jython installation
+'''''''''''''''''''
+
+Using test libraries implemented with Java or using Java tools directly
+requires running Robot Framework on Jython, which in turn requires Java Runtime
+Environment (JRE). Jython 2.5 requires Java 1.5 or newer. Both Sun and IBM Java 
+implementations are supported.
+
+Starting from Robot Framework 2.5, the minimum supported Jython version is 2.5.
+Earlier Robot Framework versions support also Jython 2.2.
+
+Installing Jython is a fairly easy procedure, and the first step is getting an
+installer from the `Jython homepage`_. Note that the installer is an executable
+JAR package, which you need to run as :cli:`java -jar jython_installer-<version>.jar`.
+Depending on your system, the installer runs either in graphical or textual
+mode, but in both cases, the actual installation procedure is very easy.
+
+There are three ways to install Robot Framework so that it can be run with Jython.
+
+1.  With all supported Jython versions, it is possible to install Robot Framework
+    using Python and still start execution using Jython.  When installing Robot
+    Framework with Python, its installer tries to find the Jython executable on the
+    system to create the :prog:`jybot` runner script correctly. Jython is found if:
+
+    -  Jython can be executed in the system directly (i.e. it is in the :var:`PATH`).
+
+    -  An environment variable :var:`JYTHON_HOME` is set and it points to
+       the Jython installation directory.
+
+    -  The installer finds the Jython installation directory from the system. On
+       Windows, it is searched from the :path:`C:\\` and :path:`D:\\` drives,
+       and on other systems from the :path:`/usr/local` and :path:`/opt`
+       directories. The directory is found if it is under the searched
+       directories mentioned above, or one level deeper. For example, the
+       following Jython installation directories would be found by the
+       installer::
+
+            C:\APPS\Jython2.5.1
+            D:\Jython251
+            /usr/local/jython2.5.1
+            /opt/whatever/Jython251
+
+2.  With Jython 2.5, it is possible to install Robot Framework without having
+    Python available by  `installing from source`_.
+
+3.  It is possible to do `manual installation`_.
+
+Installation
+~~~~~~~~~~~~
+
+Installing from source
+''''''''''''''''''''''
+
+You can get Robot Framework source code either directly from version
+control or as a source distribution package that needs to be extracted
+somewhere. In both cases, you should have a directory containing the
+source code, documentation, tools, templates, and so on.
+
+You should be able to install Robot Framework to any environment where
+Python runs using a source distribution. The installation is done by
+running the following command from the command line in the
+extracted directory::
+
+   python setup.py install
+
+:prog:`setup.py` is a standard Python installer script. It can take
+several parameters allowing, for example, installation into
+non-default locations not requiring administrative rights. It is also
+used for creating distribution packages.
+ 
+:prog:`install.py` is a custom uninstallation_ script
+for Robot Framework. It can also be used for installation, but it simply uses
+:prog:`setup.py`, and thus is totally equivalent to the command above. 
+
+It is possible to install Robot Framework 2.5 also using Jython. In this case
+the :prog:`pybot` runner script is not created.
+
+With the installation you get a rather long output, and
+something like the following text should appear at the end.
+The actual output obviously depends on your environment.
+
+::
+
+   Creating Robot Framework runner scripts...
+   Installation directory: /usr/lib/python2.5/site-packages/robot
+   Python executable: /usr/bin/python
+   Jython executable: /cygdrive/c/jython2.5/jython.bat (found from system)
+   Pybot script: /usr/bin/pybot
+   Jybot script: /usr/bin/jybot
+   Rebot script: /usr/bin/rebot
+
+Using Windows installer
+'''''''''''''''''''''''
+
+There are separate graphical installers for 32 bit (more common) and
+64 bit Windows systems. The former installer has name in format
+:path:`robotframework-<version>.win32.exe` and the latter
+:path:`robotframework-<version>.win-amd64.exe`. The installation
+itself requires only double clicking the appropriate installer and
+following instructions.
+
+After the installation you probably want to `set the environment`__ so
+that Robot Framework runner scripts can be executed easily. Notice
+that the framework is automatically installed `under the Python
+installation`__ and that location cannot be altered at this point.
+
+.. Note:: With Python 2.6 and 2.7 you need to add the Python installation 
+          directory into :var:`PATH` environment variable *before*
+          running the Robot Framework installer. `Setting up environment`_
+          section has more information about setting environment variables.
+
+.. Note:: On Windows Vista and Windows 7 installing Robot Framework requires
+          administrator privileges. Select ``Run as administrator`` from
+          the context menu when starting the installer.
+
+__ `Setting up environment`_
+__ `Where files are installed`_
+
+Using Easy Install
+''''''''''''''''''
+
+An obvious precondition for using `Easy Install`_ is to have it
+installed, and you can refer to its documentation on how to do that on
+your operating system. The command to install Robot Framework with
+Easy Install depends on whether you want to install the latest version or
+some specific version::
+
+   easy_install robotframework         # latest version
+   easy_install robotframework==2.1.3  # specified version
+
+If you need to use a proxy to access the Internet, you can tell Easy
+Install to use it by setting the :var:`http_proxy` environment
+variable.
+
+On Windows the :prog:`pybot`, :prog:`jybot` and :prog:`rebot` `runner scripts`_
+are not updated when using Easy Install. A workaround is running
+:prog:`robot_postinstall.py` script manually afterwards. The installation
+output tells where the post-install script is located, and you can either
+double click it or run it from the command line. Path to the script depends on
+your Python installation, but the command to run should be something like 
+:cli:`python C:\\Python25\\Scripts\\robot_postinstall.py`.
+
+Updating the runner scripts is slightly fragile process in general and it
+may not work with Easy Install on all environments. If the runner scripts
+do not work after installation, they need to fixed manually.
+
+Using One Click Installer
+'''''''''''''''''''''''''
+
+The One Click Installer installs Robot Framework and its preconditions Python_
+and Jython_ (optional). It also automatically `sets up environment`__ so that
+Robot Framework `runner scripts`_, as well as Python and Jython executables are
+in PATH. 
+
+.. Note:: The One Click Installer works only on Windows XP (32 bit).
+
+__ `Setting up environment`_
+
+The One Click Installer requires that you have downloaded all the required 
+component installers and have them in the same directory with it. More detailed
+instructions and details about the supported installers are available at `One
+Click Installer's documentation`__.
+
+__ `One Click Installer`_
+
+.. Note:: You should use this installer *ONLY* if you do not previously have 
+          Python or Jython installed. In that case, and also if you want to 
+          have a custom installation, you need to install the needed components
+          separately.
+
+Manual installation
+'''''''''''''''''''
+
+If you do not want to install Python, or for some other reason do not
+want to use any automatic way of installing Robot Framework, you can
+always do it manually following these steps:
+
+1. Get the source code. All the code is in a directory (a module in
+   Python) called :path:`robot`. If you have a source distribution or
+   a version control checkout, you can find it from the :path:`src`
+   directory, but you can also get it from an earlier installation.
+
+2. Copy the source code where you want to.
+
+3. Create the needed runner scripts. If you have a source package or
+   a checkout, you can get templates from :path:`src/bin` directory.
+
+Standalone jar distribution
+'''''''''''''''''''''''''''
+
+Starting from Robot Framework 2.5.2, it is also distributed as a standalone
+``robotframework-<version>.jar``, which contains both Jython and Robot
+Framework. It is an easy way to get everything if you do not need to run tests
+with Python. After you have downloaded the jar file, you can execute it like::
+
+  java -jar robotframework-2.5.2.jar --help
+  java -jar robotframework-2.5.2.jar mytests.txt
+  java -jar robotframework-2.5.2.jar --variable name:value mytests.txt
+
+If you need to `post-process outputs`_, :cli:`rebot` must be given as the
+first argument to the jar file::
+
+  java -jar robotframework-2.5.2.jar rebot --help
+  java -jar robotframework-2.5.2.jar rebot output.xml
+  java -jar robotframework-2.5.2.jar rebot --name Combined outputs/*.xml
+
+Where files are installed
+'''''''''''''''''''''''''
+
+When an automatic installer is used, the Robot Framework code is copied
+into a directory containing external Python modules. The actual
+location is platform-specific, but on computers with a UNIX-like
+operating system, it is normally something like
+:path:`/usr/lib/[PythonVer]/site-packages`, and on Windows it is
+:path:`[PythonInstallationDir]\\Lib\\site-packages`. The actual Robot
+Framework code is in a directory named :path:`robot`, or when `using Easy Install`_
+in directory :path:`robotframework[RobotVer].py[PythonVer].egg/robot`.
+
+Robot Framework runner scripts (:prog:`pybot`, :prog:`jybot` and
+:prog:`rebot`) are created and copied into another platform-specific
+location. On UNIX-like systems, they normally go to :path:`/usr/bin`
+and are thus immediately available from the command line. On Windows,
+the operating system does not provide a similar natural place, and
+Python copies these scripts into :path:`[PythonInstallationDir]\\Scripts`.
+
+Setting up environment
+''''''''''''''''''''''
+
+After the installation, you probably want to make Robot Framework's
+`runner scripts`_ easily available from the command line. On UNIX-like
+systems, that should be the case automatically, but for example on
+Windows, it is not. In environments where runners are not
+available, the directory containing them must be set to the :var:`PATH`
+environment variable. 
+
+Setting the :var:`PATH` environment variable on Windows:
+
+1. Open ``Start > Settings > Control Panel > System > Advanced >
+   Environment Variables``.  There are ``User variables`` and ``System
+   variables``, and the difference between them is that User variables
+   affect only the current users, whereas System variables affect all
+   users.
+
+2. To edit the existing :var:`PATH`, select ``Edit`` and add
+   :path:`;[PythonInstallationDir]\\Scripts\\` at the end of the
+   value. Note that the leading colon (:path:`;`) is important, as it
+   separates different entries. To add a new value, select ``New`` and
+   provide both the name and the value, this time without the colon.
+
+3. Start a new command prompt for the changes to take effect.
+
+Python installer on Windows does not create
+:path:`[PythonInstallationDir]\\Scripts` directory, but it is automatically
+created during Robot Framework installation.
+
+.. Note:: Environment variable :var:`PYTHONCASEOK` should not be set on
+          Windows machines. Robot Framework will not work correctly with 
+          this environment variable.
+
+Verifying installation
+''''''''''''''''''''''
+
+To verify that the installation and environment setup were successful,
+type::
+
+   $ pybot --version 
+   Robot Framework 2.5 (Python 2.6.5 on darwin)
+
+To verify that Robot Framework works also with Jython, type::
+
+   $ jybot --version
+   Robot Framework 2.5 (Jython 2.5.1 on java1.6.0_07)
+
+In both cases, the exact version and platform information can, of course,
+differ from these. On Jython, you may also get some notifications from
+Jython package manager upon the first execution.
+
+Uninstallation
+~~~~~~~~~~~~~~
+
+If Robot Framework has been installed using a source distribution, it
+can be uninstalled with command::
+
+   python install.py uninstall
+
+If Robot Framework is installed from a binary distribution, it can be
+uninstalled via the mechanism offered by the operating system. For
+example, in Windows you simply go to ``Control Panel >
+Add/Remove Programs``, where Robot Framework is listed under Python.
+
+If uninstallation fails somehow or you have `used Easy Install`__, Robot Framework 
+can be uninstalled by removing the `framework code and runner scripts`__ 
+manually.
+
+__ `Using Easy Install`_
+__ `Where files are installed`_
+
+Upgrading
+~~~~~~~~~
+
+The procedure when upgrading or downgrading Robot Framework depends on
+the versions used:
+
+- If you are upgrading from one minor Robot Framework version to
+  another (for example, from 2.5 to 2.5.1), it is safe to install the
+  new version over the old one, unless stated otherwise.
+
+- If you are upgrading from one major Robot Framework version to
+  another (for example, from 2.1.3 to 2.5), then it is highly
+  recommended to uninstall the old version before the new
+  installation.
+
+- If you are downgrading, the rules are the same as for upgrading.
+
+With source distributions, you first need to get the new package, and
+after that run the following command, which automatically takes care
+of the uninstallation::
+
+   python install.py reinstall
+
+With Easy Install you can simply run::
+
+   easy_install robotframework==<new-version>
+
+Regardless on the version or installation method, you do not need to
+reinstall preconditions or set the :var:`PATH` environment variable again.
