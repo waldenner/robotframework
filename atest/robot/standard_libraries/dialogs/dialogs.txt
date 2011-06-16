@@ -1,0 +1,31 @@
+*** Settings ***
+Suite Setup     Run Tests  ${EMPTY}  standard_libraries/dialogs/dialogs.txt
+Force Tags      regression  jybot  pybot  manual
+Resource        atest_resource.txt
+
+*** Test Cases ***
+Pause Execution
+    Check Test Case  ${TESTNAME}
+
+Execute Manual Step
+    Check Test Case  ${TESTNAME}
+
+Get Value From User Passes
+    Check Test Case  ${TESTNAME}
+
+Get Value From User Fails
+    Check Test Case  ${TESTNAME}
+
+Get Selection From User Passes
+    Check Test Case  ${TESTNAME}
+
+Get Selection From User Fails
+    Check Test Case  ${TESTNAME}
+
+Dialog and timeout
+    ${on python} =  Running On Python  ${INTERPRETER}
+    ${on linux} =  Running On Linux
+    ${message} =  Set Variable If  ${on python} and not ${on linux}
+    ...  Dialogs library is not supported with timeouts on Python on this platform.
+    ...  Test timeout 1 second exceeded.
+    Check Test Case  ${TESTNAME}  FAIL  ${message}
