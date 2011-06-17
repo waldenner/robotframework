@@ -36,6 +36,8 @@ div.error_box {
     text-align: center;
 }
 #report_or_log_link a {
+    display: block;
+    width: 100%;
     color: white;
     text-decoration: none;
     font-weight: bold;
@@ -99,10 +101,6 @@ table.statistics th {
 
 .fail_bar {
     background: red;
-}
-
-.no_tags_bar {
-    background: #E9E9E9;
 }
 
 .graph {
