@@ -1,6 +1,7 @@
 from __future__ import with_statement
 import StringIO
 import time
+from robot.result.jsondatamodel import DataModel
 
 try:
     import json
@@ -244,13 +245,18 @@ class TestJsSerializer(unittest.TestCase):
     def _test_remove_keywords(self, data_model):
         strings_before = self._list_size(data_model._robot_data['strings'])
         integers_before = self._list_size(data_model._robot_data['integers'])
+        data_model_json_before = StringIO.StringIO()
+        data_model.write_to(data_model_json_before)
         data_model.remove_keywords()
         self.assert_model_does_not_contain(data_model, ['kw', 'setup', 'forloop', 'foritem'])
+        data_model_json_after = StringIO.StringIO()
+        data_model.write_to(data_model_json_after)
+        assert_true(len(data_model_json_before.getvalue()) > len(data_model_json_after.getvalue()))
         assert_true(strings_before > self._list_size(data_model._robot_data['strings']))
         assert_true(integers_before > self._list_size(data_model._robot_data['integers']))
 
     def _list_size(self, array):
-        return len(''.join([str(val) for val in array]))
+        return len(''.join(str(val) if val != DataModel.UNUSED_STRING else 'u' for val in array))
 
     def test_suite_xml_parsing(self):
         # Tests parsing the whole suite structure
@@ -340,6 +346,13 @@ class TestJsSerializer(unittest.TestCase):
         buffer = StringIO.StringIO()
         json_dump(None, buffer)
         assert_equals('null', buffer.getvalue())
+
+    def test_json_dump_mapping(self):
+        buffer = StringIO.StringIO()
+        mapped1 = object()
+        mapped2 = object()
+        json_dump([mapped1, [mapped2, {mapped2:mapped1}]], buffer, {mapped1:'1', mapped2:'a'})
+        assert_equals('[1,[a,{a:1}]]', buffer.getvalue())
 
     def _get_data_model(self, xml_string):
         sax.parseString('<robot generator="test">%s<statistics/><errors/></robot>' % xml_string, self._handler)
