@@ -51,6 +51,9 @@ class _Handler(object):
     def end_element(self, text):
         return self._data_from_children
 
+    def _get_ids(self, array):
+        return [self._context.get_id(value) for value in array]
+
     def _html_format(self, text):
         return utils.html_escape(text, formatting=True)
 
@@ -75,7 +78,8 @@ class _RobotHandler(_Handler):
                 'stats': self._data_from_children[1],
                 'errors': self._data_from_children[2],
                 'baseMillis': self._context.basemillis,
-                'strings': self._context.dump_texts()}
+                'strings': self._context.dump_texts(),
+                'integers': self._context.dump_integers()}
 
 
 class _SuiteHandler(_Handler):
@@ -88,7 +92,8 @@ class _SuiteHandler(_Handler):
         self._context.collect_stats()
 
     def end_element(self, text):
-        result = ['suite', self._source, self._name] + self._data_from_children + [self._context.dump_stats()]
+        result = self._get_ids(['suite', self._source, self._name]) + \
+                 self._data_from_children + [self._get_ids(self._context.dump_stats())]
         self._context.end_suite()
         return result
 
@@ -97,10 +102,9 @@ class _TestHandler(_Handler):
 
     def __init__(self, context, attrs):
         _Handler.__init__(self, context)
-        name = attrs.get('name')
-        self._name_id = self._context.get_text_id(name)
-        self._timeout = self._context.get_text_id(attrs.get('timeout'))
-        self._context.start_test(name)
+        self._name = attrs.get('name')
+        self._timeout = attrs.get('timeout')
+        self._context.start_test(self._name)
 
     def get_handler_for(self, name, attrs):
         if name == 'status':
@@ -109,8 +113,9 @@ class _TestHandler(_Handler):
         return _Handler.get_handler_for(self, name, attrs)
 
     def end_element(self, text):
-        result = ['test', self._name_id, self._timeout, self._critical] + self._data_from_children
-        self._context.add_test(self._critical == 'Y', result[-1][0] == 'P')
+        result = self._get_ids(['test', self._name, self._timeout, self._critical]) + self._data_from_children
+        # TODO: refactor
+        self._context.add_test(self._critical == 'Y', result[-1][0] == self._context.get_id('P'))
         self._context.end_test()
         return result
 
@@ -122,15 +127,17 @@ class _KeywordHandler(_Handler):
         self._context.start_keyword()
         self._type = attrs.get('type')
         if self._type == 'for': self._type = 'forloop'
-        self._name = self._context.get_text_id(attrs.get('name'))
-        self._timeout = self._context.get_text_id(attrs.get('timeout'))
+        self._name = attrs.get('name')
+        self._timeout = attrs.get('timeout')
 
     def end_element(self, text):
-        if self._type == 'teardown' and self._data_from_children[-1][0] == 'F':
+        if self._type == 'teardown' and self._data_from_children[-1][0] == self._context.get_id('F'):
             self._context.teardown_failed()
         self._context.end_keyword()
-        return [self._type, self._name, self._timeout] + self._data_from_children
+        return self._get_ids([self._type, self._name, self._timeout]) + self._data_from_children
 
+
+# TODO: StatisticsHandler and StatItemHandler should be separated somehow from suite handlers
 
 class _StatisticsHandler(_Handler):
 
@@ -156,7 +163,7 @@ class _StatItemHandler(_Handler):
         return self._attrs
 
 
-class _StatusHandler(object):
+class _StatusHandler(_Handler):
 
     def __init__(self, context, attrs):
         self._context = context
@@ -176,8 +183,8 @@ class _StatusHandler(object):
                   self._starttime,
                   self._elapsed]
         if text:
-            result += [self._context.get_text_id(text)]
-        return result
+            result += [text]
+        return self._get_ids(result)
 
 
 class _ArgumentHandler(_Handler):
@@ -189,19 +196,19 @@ class _ArgumentHandler(_Handler):
 class _ArgumentsHandler(_Handler):
 
     def end_element(self, text):
-        return self._context.get_text_id(', '.join(self._data_from_children))
+        return self._context.get_id(', '.join(self._data_from_children))
 
 
 class _TextHandler(_Handler):
 
     def end_element(self, text):
-        return self._context.get_text_id(text)
+        return self._context.get_id(text)
 
 
 class _HtmlTextHandler(_Handler):
 
     def end_element(self, text):
-        return self._context.get_text_id(self._html_format(text))
+        return self._context.get_id(self._html_format(text))
 
 
 class _MetadataHandler(_Handler):
@@ -224,7 +231,7 @@ class _MetadataItemHandler(_Handler):
         self._name = attrs.get('name')
 
     def end_element(self, text):
-        return [self._name, self._context.get_text_id(self._html_format(text))]
+        return self._get_ids([self._name, self._html_format(text)])
 
 
 class _MsgHandler(_Handler):
@@ -239,9 +246,10 @@ class _MsgHandler(_Handler):
     def end_element(self, text):
         self._add_text(text)
         self._handle_warning_linking()
-        return self._msg
+        return self._get_ids(self._msg)
 
     def _handle_warning_linking(self):
+        # TODO: should perhaps use the id version of this list for indexing?
         if self._is_linkable:
             self._msg += [self._context.link_to(self._msg)]
         elif self._msg[1] == 'W':
@@ -249,14 +257,15 @@ class _MsgHandler(_Handler):
 
     def _add_text(self, text):
         if self._is_html:
-            self._msg += [self._context.get_text_id(text)]
+            self._msg += [text]
         else:
-            self._msg += [self._context.get_text_id(utils.html_escape(text, replace_whitespace=False))]
+            self._msg += [utils.html_escape(text, replace_whitespace=False)]
 
 class Context(object):
 
     def __init__(self):
         self._texts = TextCache()
+        self._integers = IntegerCache()
         self._basemillis = 0
         self._stats = Stats()
         self._current_place = []
@@ -277,11 +286,27 @@ class Context(object):
         finally:
             self._stats = self._stats.parent
 
-    def get_text_id(self, text):
+    def get_id(self, value):
+        if value is None:
+            return None
+        if isinstance(value, basestring):
+            return self._get_text_id(value)
+        if isinstance(value, (int, long)):
+            return self._get_int_id(value)
+        raise AssertionError('Unsupported type of value '+str(type(value)))
+
+    def _get_text_id(self, text):
         return self._texts.add(text)
+
+    def _get_int_id(self, integer):
+        id = self._integers.add(integer)
+        return -id-1
 
     def dump_texts(self):
         return self._texts.dump()
+
+    def dump_integers(self):
+        return self._integers.dump()
 
     def timestamp(self, time):
         if time == 'N/A':
@@ -369,13 +394,25 @@ class Stats(object):
             child.fail_all()
 
 
-class TextIndex(int):
-    """
-    Marker class for identifying that the number in question is a text index
-    """
+class IntegerCache(object):
 
-ZERO_INDEX = TextIndex(0)
+    def __init__(self):
+        self.integers = {}
+        self.index = 0
 
+    def add(self, integer):
+        if integer not in self.integers:
+            self.integers[integer] = self.index
+            self.index += 1
+        return self.integers[integer]
+
+    def dump(self):
+        l = range(len(self.integers))
+        for k, v in self.integers.items():
+            l[v] = k
+        return l
+
+ZERO_INDEX = 0
 
 class TextCache(object):
     # TODO: Tune compressing thresholds
@@ -391,7 +428,7 @@ class TextCache(object):
             return ZERO_INDEX
         text = self._encode(text)
         if text not in self.texts:
-            self.texts[text] = TextIndex(self.index)
+            self.texts[text] = self.index
             self.index += 1
         return self.texts[text]
 
@@ -399,10 +436,13 @@ class TextCache(object):
         raw = self._raw(text)
         if raw in self.texts or len(raw) < self._compress_threshold:
             return raw
-        compressed = base64.b64encode(zlib.compress(text.encode('UTF-8'), 9))
-        if len(raw) * self._use_compressed_threshold > len(compressed):
+        compressed = self._compress(text)
+        if len(compressed) * self._use_compressed_threshold < len(raw):
             return compressed
         return raw
+
+    def _compress(self, text):
+        return base64.b64encode(zlib.compress(text.encode('UTF-8'), 9))
 
     def _raw(self, text):
         return '*'+text
