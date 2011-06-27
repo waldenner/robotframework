@@ -38,74 +38,6 @@ describe("Text decoder", function () {
     });
 });
 
-
-function populate(plainSuite, plainErrors) {
-    var context = {strings: [], integers: []};
-    var suite = convertListToIds(context, plainSuite);
-    if (plainErrors == undefined)
-        plainErrors = [];
-    var errors = convertListToIds(context, plainErrors);
-    window.output.generatedMillis = -41;
-    window.output.baseMillis = 1000000000000;
-    window.output.generator = "info";
-    window.output.suite = suite;
-    window.output.stats = [[["Critical Tests",0,1,"","",""],
-                            ["All Tests",0,1,"","",""]],
-                            [],
-                            [["Tmp",0,1,"","Tmp",""],
-                             ["Tmp.Test",0,1,"","Tmp.Test",""]]];
-    window.output.strings = context.strings;
-    window.output.integers = context.integers;
-    window.output.errors = errors;
-}
-
-function convertListToIds(output, list) {
-    var result = [];
-    for (var key in list) {
-        result[key] = addValue(output, list[key]);
-    }
-    return result;
-}
-
-function convertDictToIds(output, dict) {
-    var result = {};
-    for (var key in dict) {
-        result[addValue(output, key)] = addValue(output, dict[key])
-    }
-    return result;
-}
-
-function addValue(output, value) {
-        if (typeof(value) == 'number') {
-            return addNumber(output.integers, value);
-        } else if (typeof(value) == 'string') {
-            return addString(output.strings, value);
-        } else if (value instanceof Array) {
-            return convertListToIds(output, value);
-        } else {
-            return convertDictToIds(output, value);
-        }
-}
-
-function addNumber(integers, number) {
-    var index = integers.indexOf(number);
-    if (index == -1) {
-        index = integers.length;
-        integers[index] = number;
-    }
-    return -index - 1;
-}
-
-function addString(strings, text) {
-    var index = strings.indexOf(text);
-    if (index == -1) {
-        index = strings.length;
-        strings[index] = text;
-    }
-    return index;
-}
-
-
 function subSuite(index, suite) {
     if (!suite)
         suite = window.testdata.suite();
@@ -259,7 +191,11 @@ describe("Setups and teardowns", function () {
         checkTypeNameArgs(children[2], "TEARDOWN", "BuiltIn.Log", "test teardown");
     });
 
-    //FIXME: Test teardown test
+    it("should parse keyword teardown", function () {
+        var test = firstTest(window.testdata.suite());
+        var children = test.children();
+        checkTypeNameArgs(children[1].children()[1], "TEARDOWN", "BuiltIn.Log", "keyword teardown");
+    });
 });
 
 
@@ -278,21 +214,7 @@ describe("Short time formatting", function (){
 describe("Handling messages", function (){
 
     beforeEach(function (){
-        var suite =
-            ["*/suite/verysimple.txt","*Verysimple","*",[],["*P",-28,32],
-                [],
-                [["*Test","*","*Y","*",[], ["*P",-1,4],
-                    [
-                    ["*kw","*Log","*","*Logging","*<h1>html</h1>, HTML",["*P",0,0],[], [[0,"*H","*<h1>html</h1>"]]],
-                    ["*kw","*Log","*","*Logging","*infolevelmessage, INFO",["*P",1,0],[],[[1,"*I","*infolevelmessage"]]],
-                    ["*kw","*Log","*","*Logging","*warning, WARN",["*P",2,0],[], [[2,"*W","*warning"]]],
-                    ["*kw","*Log","*","*Logging","*debugging, DEBUG",["*P",3,0],[],[[3,"*D","*debugging"]]],
-                    ["*kw","*Log","*","*Logging","*tracing, TRACE",["*P",3,0],[],[[3,"*T","*tracing"]]],
-                    ]]],
-                [],
-                [1,1,1,1]];
-        var errors = [[2,"*W","*warning", "*keyword_Verysimple.Test.2"]];
-        populate(suite, errors);
+        window.output = window.messagesOutput;
     });
 
     function expectMessage(message, txt, level) {
@@ -300,8 +222,12 @@ describe("Handling messages", function (){
         expect(message.level).toEqual(level);
     }
 
+    function kwMessages(kw) {
+        return nthKeyword(firstTest(window.testdata.suite()), kw).messages();
+    }
+
     function kwMessage(kw) {
-        return nthKeyword(firstTest(window.testdata.suite()), kw).messages()[0];
+        return kwMessages(kw)[0];
     }
 
     it("should handle info level message", function () {
@@ -313,11 +239,13 @@ describe("Handling messages", function (){
     });
 
     it("should handle debug level message", function () {
-        expectMessage(kwMessage(3), "debugging", "debug");
+        var messages = kwMessages(4);
+        expectMessage(messages[messages.length-2], "debugging", "debug");
     });
 
     it("should handle trace level message", function () {
-        expectMessage(kwMessage(4), "tracing", "trace");
+        var messages = kwMessages(5);
+        expectMessage(messages[messages.length-2], "tracing", "trace");
     });
 
     it("should handle html level message", function () {
@@ -325,26 +253,18 @@ describe("Handling messages", function (){
     });
 
     it("should show warning in errors", function () {
-        expectMessage(window.testdata.errors().next(), "warning", "warn");
-        expect(window.testdata.errors().next().link).toEqual("keyword_Verysimple.Test.2");
+        var firstError = window.testdata.errors().next()
+        expectMessage(firstError, "warning", "warn");
+        var pathToKeyword = window.testdata.pathToKeyword(firstError.link.substr(8));
+        var errorKw = window.testdata.find(pathToKeyword[pathToKeyword.length-1]);
+        expect(errorKw.messages()[0].level).toEqual("warn");
     });
 });
 
 
 describe("Parent Suite Teardown Failure", function (){
     beforeEach(function (){
-        var suite =
-            ["*/tmp","*Tmp","*",[], ["*F",-37,41, "*Suite teardown failed:\nAssertionError"],
-                [["*/tmp/test.txt","*Test","*",[],["*P",-2,3],
-                    [],
-                    [["*test","*Testt","*","*Y","*",[],["*P",-1,2],
-                        [["*kw","*NoOp","*","*Does nothing.","*",["*P",0,1], [], []]]]],
-                    [],
-                    [1,0,1,0]]],
-                [],
-                [["*teardown","*Fail","*","*Fails","*",["*F",2,2],[],[[3,"*F","*AssertionError"]]]]
-                ,[1,0,1,0]];
-        populate(suite);
+        window.output = window.teardownFailureOutput;
     });
 
     it("should show test status as failed", function (){
@@ -376,18 +296,11 @@ describe("Parent Suite Teardown Failure", function (){
 
 describe("Parent Suite Teardown and Test failure", function(){
     beforeEach(function (){
-        var suite =
-            ["*/tmp/SuiteTeardown.txt","*SuiteTeardown","*",[],["*F",-23,24,"*Suite teardown failed:\nin suite teardown"],
-                [],
-                [["*Failing","*","*Y","*",[], ["*F",-2,2,"*In test"],
-                    [["*kw","*Fail","*","*Fails","*In test",["*F",-1,1],[],[0,"*F","*In test"]]]]],
-                [["*teardown","*Fail","*","*Fails","*in suite teardown",["*F",0,1],[],[1,"*F","*in suite teardown"]]],
-                [1,0,1,0]];
-        populate(suite);
+        window.output = window.teardownFailureOutput;
     });
 
     it("should show test message 'In test\n\nAlso teardown of the parent suite failed.'", function (){
-        var test = firstTest(window.testdata.suite());
+        var test = window.testdata.suite().suites()[0].tests()[1];
         expect(test.message()).toEqual("In test\n\nAlso teardown of the parent suite failed.");
     });
 })
@@ -395,43 +308,19 @@ describe("Parent Suite Teardown and Test failure", function(){
 describe("Test failure message", function (){
 
     beforeEach(function () {
-        var suite =
-            ["*/test.txt","*Test","*",[],["*F",-29,30],
-               [],
-               [["*Feilaava","*","*Y","*",[],["*F",-2,3,"*FooBar!"],
-                    [["*kw","*feilaa","*","*","*",["*F",-1,1],
-                        [["*kw","*Fail","*","*Fails","*FooBar!",["*F",-1,1], [], [[0,"F","*FooBar!"]]]],[]
-                        ]]]],
-                    []
-                [1,0,1,0]];
-        populate(suite);
+        window.output = window.passingFailingOutput;
     });
 
     it("should show test failure message ''", function (){
-        var test = firstTest(window.testdata.suite());
-        expect(test.message()).toEqual("FooBar!");
+        var test = window.testdata.suite().tests()[1];
+        expect(test.message()).toEqual("In test");
     });
 });
 
 describe("Iterating Keywords", function (){
 
     beforeEach(function (){
-        var suite =
-            ["*/suite/verysimple.txt","*Verysimple","*",[],["*P",-29,34],
-                [],
-                [["*Test","*","*Y","*",[],["*P",-2,7],
-                    [["*kw","*kw1","*","*","*",["*P",-1,1],
-                        [["*kw","*Printtaa","*","*Logs things","*keyword1",["*P",-1,1],[],[0,"*I","*keyword1"]]], []],
-                    ["*kw","*kw2","*","*","*",["*P",0,1],
-                        [["*kw","*Printtaa","*","*Logs things","*keyword2",["*P",1,0],[],[1,"*I","*keyword2"]]], []],
-                    ["*kw","*kw3","*","*","*",["*P",2,1],
-                        [["*kw","*Printtaa","*","*Logs things","*keyword3",["*P",2,1],[],[2,"*I","*keyword3"]]], []],
-                    ["*kw","*kw4","*","*","*",["*P",3,1],
-                        [["*kw","*Printtaa","*","*Logs things","*keyword4",["*P",4,0],[],[4,"*I","*keyword4"]]], []]]
-                    ]],
-                [],
-                [1,1,1,1]];
-        populate(suite);
+        window.output = window.testsAndKeywordsOutput;
     });
 
     function test(){
@@ -466,29 +355,15 @@ describe("Iterating Keywords", function (){
 describe("Iterating Tests", function (){
 
     beforeEach(function (){
-        var suite =
-            ["*/verysimple.txt","*Verysimple","*",[],["*P",-28,32],
-                [],
-                [["*Test1","*","*Y","*",[],["*P",-1,2],
-                    [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*simple1",["*P",0,0],
-                    [], [[0,"*I","*simple1"]]]]],
-                ["*Test2","*","*Y","*",[],["*P",1,1],
-                    [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*simple2",["*P",2,0],
-                    [], [[2,"*I","*simple2"]]]]],
-                ["*Test3","*","*Y","*",[],["*P",3,1],
-                    [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*simple3",["*P",3,0],
-                    [], [[3,"*I","*simple3"]]]]]],
-                [],
-                [3,3,3,3]];
-        populate(suite);
+        window.output = window.testsAndKeywordsOutput;
     });
 
     it("should give correct number of tests", function (){
-        expect(window.testdata.suite().tests().length).toEqual(3);
+        expect(window.testdata.suite().tests().length).toEqual(4);
     });
 
     it("should be possible to go through all the tests in order", function () {
-        var expectedTests = ["Test1", "Test2", "Test3"];
+        var expectedTests = ["Test 1", "Test 2", "Test 3", "Test 4"];
         var tests = window.testdata.suite().tests();
         for(var i = 0; i <tests.length ; i++){
             expect(tests[i].name).toEqual(expectedTests[i]);
@@ -500,42 +375,15 @@ describe("Iterating Tests", function (){
 describe("Iterating Suites", function () {
 
     beforeEach(function (){
-        var suite =
-            ["*/foo","*Foo","*",[],["*P",-30,36],
-                [["*/foo/bar","*Bar","*",[],["*P",-4,5],
-                    [["*/foo/bar/testii.txt","*Testii","*",[],["*P",-3,3],
-                        [],
-                        [["*FOO BAR","*","*Y","*",[],["*P",-1,1],
-                            [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*foo bar testi",
-                                ["*P",-1,1], [], [[0,"*I","*foo bar testi"]]]]]],
-                        [],
-                        [1,1,1,1]]],
-                    [],
-                    [],
-                    [1,1,1,1]],
-                ["*/foo/foo","*Foo","*",[],["*P",1,5],
-                    [["*/foo/foo/tostii.txt","*Tostii","*",[],["*P",2,3],
-                        [],
-                        [["*FOO FOO","*","*Y","*",[], ["*P",4,1],
-                            [["*kw","*BuiltIn.No Operation","*","*Does absolutely nothing.","*",
-                                ["*P",4,0], [], []]]]],
-                        [],
-                        [1,1,1,1]]],
-                     [],
-                     []
-                     [1,1,1,1]]],
-                [],
-                [],
-                [2,2,2,2]];
-        populate(suite);
+        window.output = window.allDataOutput;
     });
 
     it("should give correct number of suites", function (){
         var suite = window.testdata.suite();
         var subSuites = suite.suites();
-        expect(subSuites.length).toEqual(2);
-        expect(subSuites[0].suites().length).toEqual(1);
-        expect(subSuites[1].suites()[0].suites().length).toEqual(0);
+        expect(subSuites.length).toEqual(5);
+        expect(subSuites[0].suites().length).toEqual(0);
+        expect(subSuites[3].suites().length).toEqual(1);
     });
 
     it("should be possible to iterate suites", function (){
@@ -545,7 +393,7 @@ describe("Iterating Suites", function () {
             for(var j in subSuites[i].suites()){
                 var testsuite = subSuites[i].suites()[j];
                 tests += testsuite.tests().length;
-                expect(testsuite.tests().length).toEqual(1);
+                expect(testsuite.tests().length).toBeGreaterThan(0);
             }
         }
         expect(tests).toEqual(2);
@@ -553,44 +401,44 @@ describe("Iterating Suites", function () {
 
     it("should show correct full names", function (){
         var root = window.testdata.suite();
-        expect(root.fullName).toEqual("Foo");
-        expect(root.suites()[0].fullName).toEqual("Foo.Bar");
-        expect(root.suites()[0].suites()[0].fullName).toEqual("Foo.Bar.Testii");
-        expect(root.suites()[1].suites()[0].tests()[0].fullName).toEqual("Foo.Foo.Tostii.FOO FOO");
+        expect(root.fullName).toEqual("Data");
+        expect(root.suites()[0].fullName).toEqual("Data.Messages");
+        expect(root.suites()[3].suites()[0].fullName).toEqual("Data.teardownFailure.PassingFailing");
+        expect(root.suites()[3].suites()[0].tests()[0].fullName).toEqual("Data.teardownFailure.PassingFailing.Passing");
     });
 
     it("should give navigation uniqueId list for a test", function (){
-        var uniqueIdList = window.testdata.pathToTest("Foo.Foo.Tostii.FOO FOO");
+        var uniqueIdList = window.testdata.pathToTest("Data.teardownFailure.PassingFailing.Passing");
         var root = window.testdata.suite();
         expect(uniqueIdList[0]).toEqual(root.id);
-        expect(uniqueIdList[1]).toEqual(subSuite(1).id);
-        expect(uniqueIdList[2]).toEqual(subSuite(1).suites()[0].id);
-        expect(uniqueIdList[3]).toEqual(subSuite(1).suites()[0].tests()[0].id);
+        expect(uniqueIdList[1]).toEqual(subSuite(3).id);
+        expect(uniqueIdList[2]).toEqual(subSuite(3).suites()[0].id);
+        expect(uniqueIdList[3]).toEqual(subSuite(3).suites()[0].tests()[0].id);
         expect(uniqueIdList.length).toEqual(4);
     });
 
     it("should give navigation uniqueId list for a keyword", function (){
-        var uniqueIdList = window.testdata.pathToKeyword("Foo.Foo.Tostii.FOO FOO.0");
+        var uniqueIdList = window.testdata.pathToKeyword("Data.teardownFailure.PassingFailing.Passing.0");
         var root = window.testdata.suite();
         expect(uniqueIdList[0]).toEqual(root.id);
-        expect(uniqueIdList[1]).toEqual(subSuite(1).id);
-        expect(uniqueIdList[2]).toEqual(subSuite(1).suites()[0].id);
-        expect(uniqueIdList[3]).toEqual(subSuite(1).suites()[0].tests()[0].id);
-        expect(uniqueIdList[4]).toEqual(subSuite(1).suites()[0].tests()[0].keywords()[0].id);
+        expect(uniqueIdList[1]).toEqual(subSuite(3).id);
+        expect(uniqueIdList[2]).toEqual(subSuite(3).suites()[0].id);
+        expect(uniqueIdList[3]).toEqual(subSuite(3).suites()[0].tests()[0].id);
+        expect(uniqueIdList[4]).toEqual(subSuite(3).suites()[0].tests()[0].keywords()[0].id);
         expect(uniqueIdList.length).toEqual(5);
     });
 
     it("should give navigation uniqueId list for a suite", function (){
-        var uniqueIdList = window.testdata.pathToSuite("Foo.Bar.Testii");
+        var uniqueIdList = window.testdata.pathToSuite("Data.teardownFailure.PassingFailing");
         var root = window.testdata.suite();
         expect(uniqueIdList[0]).toEqual(root.id);
-        expect(uniqueIdList[1]).toEqual(root.suites()[0].id);
-        expect(uniqueIdList[2]).toEqual(root.suites()[0].suites()[0].id);
+        expect(uniqueIdList[1]).toEqual(root.suites()[3].id);
+        expect(uniqueIdList[2]).toEqual(root.suites()[3].suites()[0].id);
         expect(uniqueIdList.length).toEqual(3);
     });
 
     it("should give navigation uniqueId list for the root suite", function (){
-        var uniqueIdList = window.testdata.pathToSuite("Foo");
+        var uniqueIdList = window.testdata.pathToSuite("Data");
         var root = window.testdata.suite();
         expect(uniqueIdList[0]).toEqual(root.id);
         expect(uniqueIdList.length).toEqual(1);
@@ -605,33 +453,7 @@ describe("Iterating Suites", function () {
 describe("Element ids", function (){
 
     beforeEach(function (){
-        var suite =["*/foo","*Foo","*",[],["*P",-30,36],
-                [["*/foo/bar","*Bar","*",[],["*P",-4,5],
-                    [["*/foo/bar/testii.txt","*Testii","*",[],["*P",-3,3],
-                        [],
-                        [["*FOO BAR","*","*Y","*",[],["*P",-1,1],
-                            [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*foo bar testi",
-                                ["*P",-1,1], [], [[0,"*I","*foo bar testi"]]]]]],
-                        [],
-                        [1,1,1,1]]],
-                    [],
-                    [],
-                    [1,1,1,1]],
-                ["*/foo/foo","*Foo","*",[],["*P",1,5],
-                    [["*/foo/foo/tostii.txt","*Tostii","*",[],["*P",2,3],
-                        [],
-                        [["*FOO FOO","*","*Y","*",[], ["*P",4,1],
-                            [["*kw","*BuiltIn.No Operation","*","*Does absolutely nothing.","*",
-                                ["*P",4,0], [], []]]]],
-                        [],
-                        [1,1,1,1]]],
-                     [],
-                     []
-                     [1,1,1,1]]],
-                [],
-                [],
-                [2,2,2,2]];
-        populate(suite);
+        window.output = window.allDataOutput;
     });
 
     it("should give id for the main suite", function (){
@@ -640,27 +462,27 @@ describe("Element ids", function (){
     });
 
     it("should give id for a test", function (){
-        var test = subSuite(0, subSuite(0)).tests()[0];
+        var test = subSuite(0, subSuite(3)).tests()[0];
         expect(window.testdata.find(test.id)).toEqual(test);
     });
 
     it("should give id for a subsuite", function (){
-        var subsuite = subSuite(0);
+        var subsuite = subSuite(3);
         expect(window.testdata.find(subsuite.id)).toEqual(subsuite);
     });
 
     it("should give id for a keyword", function (){
-        var kw = subSuite(0, subSuite(0)).tests()[0].keywords()[0];
+        var kw = subSuite(0, subSuite(3)).tests()[0].keywords()[0];
         expect(window.testdata.find(kw.id)).toEqual(kw);
     });
 
     it("should give id for a message", function (){
-        var msg = subSuite(0, subSuite(0)).tests()[0].keywords()[0].messages()[0];
+        var msg = subSuite(0, subSuite(3)).tests()[0].keywords()[0].messages()[0];
         expect(window.testdata.find(msg.id)).toEqual(msg);
     });
 
     it("should find right elements with right ids", function (){
-        var suite = subSuite(0);
+        var suite = subSuite(3);
         var kw = subSuite(0, suite).tests()[0].keywords()[0];
         expect(kw.id).not.toEqual(suite.id);
         expect(window.testdata.find(kw.id)).toEqual(kw);
@@ -671,38 +493,27 @@ describe("Element ids", function (){
 describe("Elements are created only once", function (){
 
     beforeEach(function (){
-        var suite =
-                ["*/verysimple.txt","*Verysimple","*",[],["*P",-28,32],
-                [],
-                [["*Test1","*","*Y","*",[],["*P",-1,2],
-                    [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*simple1",["*P",0,0],
-                    [], [[0,"*I","*simple1"]]]]],
-                ["*Test2","*","*Y","*",[],["*P",1,1],
-                    [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*simple2",["*P",2,0],
-                    [], [[2,"*I","*simple2"]]]]],
-                ["*Test3","*","*Y","*",[],["*P",3,1],
-                    [["*kw","*BuiltIn.Log","*","*Logs the given message with the given level.","*simple3",["*P",3,0],
-                    [], [[3,"*I","*simple3"]]]]]],
-                [],
-                [3,3,3,3]];
-        populate(suite);
+        window.output = window.passingFailingOutput;
     });
 
     it("should create suite only once", function (){
         var main1 = window.testdata.suite();
         var main2 = window.testdata.suite();
+        expect(main1).not.toBeUndefined();
         expect(main1).toEqual(main2);
     });
 
     it("should create same test only once", function (){
-        var test1 = window.testdata.suite().tests()[2];
-        var test2 = window.testdata.suite().tests()[2];
+        var test1 = window.testdata.suite().tests()[1];
+        var test2 = window.testdata.suite().tests()[1];
+        expect(test1).not.toBeUndefined();
         expect(test1).toEqual(test2);
     });
 
     it("should create same keyword only once", function (){
         var kw1 = window.testdata.suite().tests()[0].keywords()[0];
         var kw2 = window.testdata.suite().tests()[0].keywords()[0];
+        expect(kw1).not.toBeUndefined();
         expect(kw1).toEqual(kw2);
     });
 });
