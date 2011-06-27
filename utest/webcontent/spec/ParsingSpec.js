@@ -127,13 +127,7 @@ describe("Handling Suite", function () {
     }
 
     beforeEach(function () {
-        var keyword = ["*kw","*lib.kw",'*',"*Kw doc.", '*', ["*P",0,0], [], [[0,"*I","*message"]]];
-        var forloop = ["*forloop","*${i} IN RANGE [ 2 ]",'*','*','*', ["*P", 0, 0], [
-            ["*foritem","*${i} = 0",'*','*','*', ["*P", 0, 0], [keyword], []],
-            ["*foritem","*${i} = 1",'*','*','*', ["*P", 0, 0], [keyword], []]], []]
-        var test = ["*Test","*1 second","*Y", "*test doc", ["*tag1", "*tag2"],["*P",-1,2], [keyword, forloop]];
-        var suite = ["*/tmp/test.txt","*Suite","*suite doc",["*meta", "*data"], ["*P",-38,39], [], [test], [], [1,1,1,1]];
-        populate(suite);
+        window.output = window.suiteOutput;
     });
 
     function expectStats(suite, total, passed, critical, criticalPassed){
@@ -145,14 +139,20 @@ describe("Handling Suite", function () {
         expect(suite.criticalFailed).toEqual(critical-criticalPassed);
     }
 
+    function endsWith(string, ending) {
+        var index = string.lastIndexOf(ending);
+        return string.substring(index) == ending;
+    }
+
     it("should parse suite", function () {
         var suite = window.testdata.suite();
         expect(suite.name).toEqual("Suite");
         expect(suite.status).toEqual("PASS");
-        expect(suite.source).toEqual("/tmp/test.txt");
+        expect(endsWith(suite.source, "/Suite.txt")).toEqual(true);
         expect(suite.doc()).toEqual("suite doc");
         expect(suite.times).toBeDefined();
-        expect(suite.times.elapsedMillis).toEqual(39);
+        expect(suite.times.elapsedMillis).toBeGreaterThan(0);
+        expect(suite.times.elapsedMillis).toBeLessThan(1000);
         expectStats(suite, 1, 1, 1, 1);
         expect(suite.metadata[0]).toEqual(["meta", "data"]);
     });
@@ -165,16 +165,18 @@ describe("Handling Suite", function () {
         expect(test.doc()).toEqual("test doc");
         expect(test.tags).toEqual(["tag1", "tag2"]);
         expect(test.times).toBeDefined();
-        expect(test.times.elapsedMillis).toEqual(2);
+        expect(test.times.elapsedMillis).toBeGreaterThan(0);
+        expect(test.times.elapsedMillis).toBeLessThan(window.testdata.suite().times.elapsedMillis+1);
         expect(test.timeout).toEqual("1 second");
     });
 
     it("should parse keyword", function () {
         var kw = nthKeyword(firstTest(window.testdata.suite()), 0);
-        expect(kw.name).toEqual("lib.kw");
+        expect(kw.name).toEqual("BuiltIn.Log");
         expect(kw.status).toEqual("PASS");
         expect(kw.times).toBeDefined();
-        expect(kw.times.elapsedMillis).toEqual(0);
+        expect(kw.times.elapsedMillis).toBeGreaterThan(0);
+        expect(kw.times.elapsedMillis).toBeLessThan(firstTest(window.testdata.suite()).times.elapsedMillis+1);
         expect(kw.path).toEqual("Suite.Test.0");
         expect(kw.type).toEqual("KEYWORD");
     });
@@ -198,7 +200,7 @@ describe("Handling Suite", function () {
 
     it("should parse timestamp", function () {
         var timestamp = window.testdata.generated();
-        expect(timestamp).toEqual(new Date(window.output.baseMillis-41));
+        expect(timestamp).toEqual(new Date(window.output.baseMillis+window.output.generatedMillis));
     });
 
 });
@@ -206,18 +208,7 @@ describe("Handling Suite", function () {
 describe("Setups and teardowns", function () {
 
     beforeEach(function () {
-        var suite =
-            ["*/temp/suite.txt","*Suite",0,[], ["*P",-35,40], [],
-                [["*Test","*","*Y","*", [], ["*P",0,4],
-                 [
-                  ["*setup","*Lib.Kw","*","*Blaa.","*sets", ["*P",1,0], [], [[1,"*I","*sets"]]],
-                  ["*kw","*Lib.Kw","*","*Blaa.","*sets", ["*P",2,0], [], [[2,"*I","*sets"]]],
-                  ["*teardown","*Lib.Kw","*","*Blaa.","*tears",["*P",3,0], [], [[3,"*I","*tears"]]]
-                  ]]],
-                [["*setup","*Lib.Kw","*","*Blaa.","*sets",["*P",-1,1], [], [[0,"*I","*sets"]]],
-                 ["*teardown","*Lib.Kw","*","*Blaa.","*tears",["*P",4,1],[],[[4,"*I","*tears"]]]],
-                [1,1,1,1]];
-        populate(suite);
+        window.output = window.setupsAndTeardownsOutput;
     });
 
     function checkTypeNameArgs(kw, type, name, args) {
@@ -228,28 +219,28 @@ describe("Setups and teardowns", function () {
 
     it("should parse suite setup", function () {
     	var suite = window.testdata.suite();
-    	checkTypeNameArgs(suite.keywords()[0], "SETUP", "Lib.Kw", "sets");
+    	checkTypeNameArgs(suite.keywords()[0], "SETUP", "BuiltIn.Log", "suite setup");
     });
 
     it("should parse suite teardown", function () {
     	var suite = window.testdata.suite();
-    	checkTypeNameArgs(suite.keywords()[1], "TEARDOWN", "Lib.Kw", "tears");
+    	checkTypeNameArgs(suite.keywords()[1], "TEARDOWN", "BuiltIn.Log", "suite teardown");
     });
 
     it("should give navigation uniqueId list for a suite teardown keyword", function (){
-        var uniqueIds = window.testdata.pathToKeyword("Suite.1");
+        var uniqueIds = window.testdata.pathToKeyword("SetupsAndTeardowns.1");
         expect(uniqueIds[0]).toEqual(window.testdata.suite().id);
         expect(uniqueIds[1]).toEqual(nthKeyword(window.testdata.suite(), 1).id);
         expect(uniqueIds.length).toEqual(2);
     });
 
     it("should parse test setup", function () {
-        checkTypeNameArgs(nthKeyword(firstTest(window.testdata.suite()), 0), "SETUP", "Lib.Kw", "sets");
+        checkTypeNameArgs(nthKeyword(firstTest(window.testdata.suite()), 0), "SETUP", "BuiltIn.Log", "test setup");
     });
 
     it("should parse test teardown", function () {
     	var test = firstTest(window.testdata.suite());
-    	checkTypeNameArgs(nthKeyword(test, 2), "TEARDOWN", "Lib.Kw", "tears");
+    	checkTypeNameArgs(nthKeyword(test, 2), "TEARDOWN", "BuiltIn.Log", "test teardown");
     });
 
     it("should give suite children in order", function () {
@@ -263,10 +254,12 @@ describe("Setups and teardowns", function () {
     it("should give test children in order", function () {
         var test = firstTest(window.testdata.suite());
         var children = test.children();
-        checkTypeNameArgs(children[0], "SETUP", "Lib.Kw", "sets");
-        checkTypeNameArgs(children[1], "KEYWORD", "Lib.Kw", "sets");
-        checkTypeNameArgs(children[2], "TEARDOWN", "Lib.Kw", "tears");
+        checkTypeNameArgs(children[0], "SETUP", "BuiltIn.Log", "test setup");
+        checkTypeNameArgs(children[1], "KEYWORD", "Keyword with teardown", "");
+        checkTypeNameArgs(children[2], "TEARDOWN", "BuiltIn.Log", "test teardown");
     });
+
+    //FIXME: Test teardown test
 });
 
 
