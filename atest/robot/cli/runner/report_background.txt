@@ -1,0 +1,36 @@
+*** Settings ***
+Force Tags      regression  pybot  jybot
+Resource        atest_resource.txt
+Test Template   Report should have correct background
+
+
+*** Test Cases ***
+
+Default colors
+    ${EMPTY}
+
+Two custom colors
+    --reportbackground blue:red  blue  blue  red
+
+Three custom colors
+    --reportback green:yellow:red  green  yellow  red
+
+Invalid colors are ignored with a warning
+   [Template]  Invalid colors should be ignored with a warning
+   invalid
+   too:many:colors:here
+
+
+*** Keywords ***
+
+Report should have correct background
+    [Arguments]  ${opt}  ${pass}=#99FF66  ${noncrit}=#99FF66  ${fail}=#FF3333
+    Run Tests  ${opt} --report rep.html  misc/pass_and_fail.html
+    ${report} =  Get File  ${OUTDIR}/rep.html
+    Should Contain  ${report}  "background":{"fail":"${fail}","nonCriticalFail":"${noncrit}","pass":"${pass}"},
+
+Invalid colors should be ignored with a warning
+    [Arguments]  ${colors}
+    Report should have correct background  --reportb ${colors}
+    Check Log Message  ${ERRORS.msgs[0]}  Invalid report background colors '${colors}'.  ERROR
+
