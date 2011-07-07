@@ -76,6 +76,12 @@ class TestJsSerializer(_JsSerializerTestBase):
     <item name="esc">&lt;</item>
     <item name="html">http://x.y.x.jpg</item>
   </metadata>
+  <kw type="setup" name="Suite Setup" timeout="">
+      <doc>Suite Setup Doc</doc>
+      <arguments></arguments>
+      <msg timestamp="20110601 12:01:51.353" level="INFO">Setup Suite</msg>
+      <status status="PASS" endtime="20110601 12:01:51.353" starttime="20110601 12:01:51.376"></status>
+  </kw>
   <test name="Test" timeout="">
     <doc>*html* &lt;esc&gt; http://x.y http://x.y/z.jpg</doc>
     <kw type="kw" name="Keyword.Example" timeout="1 second">
@@ -223,7 +229,7 @@ class TestJsSerializer(_JsSerializerTestBase):
                      plain_suite=['*teardown', '*BuiltIn.Log', '*', '*Logs the given message with the given level.', '*keyword teardown',
                                        ['*P', -1, 2], [],
                                         [[0, '*W', '*keyword teardown']]])
-        assert_equals(self._context.link_to([0, 'W', 'keyword teardown']), "s0_k0")
+        assert_equals(self._context.link_to([0, 'W', 'keyword teardown']), "s1-k1")
 
     def test_for_loop_xml_parsing(self):
         self._context.start_suite('suite')
@@ -298,7 +304,7 @@ class TestJsSerializer(_JsSerializerTestBase):
                               ]],
                                        [],
                               [1, 1, 1, 1]])
-        assert_equals(self._context.link_to([0, 'W', 'simple']),'s0_t0_k0')
+        assert_equals(self._context.link_to([0, 'W', 'simple']),'s1-t1-k1')
 
     def test_suite_data_model_keywords_clearing(self):
         self._test_remove_keywords(self._get_data_model(self.SUITE_XML), should_contain_strings=['*key', '*val'])
