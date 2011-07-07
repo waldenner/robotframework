@@ -89,6 +89,7 @@ class DataModel(object):
         # TODO: Cleanup?
         return item and \
                isinstance(item, list) and \
+               len(item) == 8 and \
                (isinstance(item[0], TextIndex)) and \
                self._robot_data['strings'][item[0]] in \
                         ['*kw', '*setup', '*forloop', '*foritem']
@@ -119,7 +120,7 @@ class DataModel(object):
 
     def _collect_used_indices(self, data, result):
         for item in data:
-            if isinstance(item, (int, long)):
+            if isinstance(item, TextIndex):
                 result.add(item)
             elif isinstance(item, list):
                 self._collect_used_indices(item, result)
