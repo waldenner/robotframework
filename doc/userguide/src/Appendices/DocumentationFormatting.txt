@@ -1,0 +1,160 @@
+Documentation formatting
+------------------------
+
+It is possible to use simple HTML formatting with `test suite`__,
+`test case`__ and `user keyword`__ documentation in the test data, as well
+as when `documenting test libraries`__.  The formatting is similar to
+the style used in most wikis, and it is designed to be understandable
+both as plain text and after the HTML transformation.
+
+__ `test suite documentation`_
+__ `test case documentation`_
+__ `user keyword documentation`_
+__ `Documenting libraries`_
+
+.. contents::
+   :depth: 2
+   :local:
+
+Representing newlines
+~~~~~~~~~~~~~~~~~~~~~
+
+The documentation used for test suites, test cases and keywords is
+subject to `general parsing rules`__ of the test data. This means that
+normal newlines are not preserved, and dividing documentation into lines
+and paragraphs requires using a `literal newline character sequence`__
+(:code:`\\n`), as illustrated in the example below.
+
+__ `Test data syntax`_
+__ `Handling whitespace`_
+
+.. raw:: html
+
+   <table class="example docutils">
+     <tr>
+       <th>Setting</th>
+       <th>Value</th>
+     </tr>
+     <tr>
+       <td>Documentation</td>
+       <td>
+         First line.\n<br>\n<br>
+         Second paragraph, this time\n<br>with multiple lines.
+       </td>
+     </tr>
+   </table>
+
+With library documentations normal newlines are enough, and for
+example the following keyword documentation would create same end result
+as the above test suite documentation.
+
+.. sourcecode:: python
+
+  def example_keyword():
+      """First line.
+
+      Second paragraph, this time
+      with multiple lines.
+      """
+      pass
+
+Bold and italic
+~~~~~~~~~~~~~~~
+
+Bold text can be created by having an asterisk before and after the
+selected word or words, for example :code:`\*this is bold*`. Italic
+style works similarly, but the special character to use is an
+underscore, for example :code:`\_italic_`. It is also possible to have
+bold italic with the syntax :code:`\_*bold italic*_`.
+
+An asterisk or an underscore alone, or in the middle of a word, does
+not start formatting, but punctuation characters before or after them
+are allowed. Both bold and italic are limited for formatting text on
+one line, and formatting spanning several lines must be explicitly
+started and stopped on every line.
+
+.. raw:: html
+
+   <table class="tabular docutils">
+     <caption>Bold and italic examples</caption>
+     <tr>
+       <th>Unformatted</th>
+       <th>Formatted</th>
+     </tr>
+     <tr>
+       <td>*bold*</td>
+       <td><b>bold</b></td>
+     </tr>
+     <tr>
+       <td>_italic_</td>
+       <td><i>italic</i></td>
+     </tr>
+     <tr>
+       <td>*bold* and then _italic_</td>
+       <td><b>bold</b> and then <i>italic</i></td>
+     </tr>
+     <tr>
+       <td>_*bold italic*_, _italic_, nothing</td>
+       <td><i><b>bold italic</b></i>, <i>italic</i>, nothing</td>
+     </tr>
+     <tr>
+       <td>This is *bold*\n<br>*on multiple*\n<br>*lines*.</td>
+       <td>This is <b>bold</b><br><b>on multiple</b><br><b>lines</b>.</td>
+     </tr>
+   </table>
+
+URLs
+~~~~
+
+All strings that look like URLs are automatically converted into
+clickable links. Additionally, URLs that end with extension
+:path:`.jpg`, :path:`.jpeg`, :path:`.png`, :path:`.gif` or
+:path:`.bmp` (case-insensitive) will automatically create images. For
+example URLs like :code:`http://some.url` are turned into links, and
+:code:`http:///server/image.jpg` and :code:`file:///path/chart.png`
+into images.
+
+The automatic conversion of URLs to links is applied to all the data
+in logs and reports, but creating images is done only for test suite,
+test case and keyword documentation.
+
+Tables
+~~~~~~
+
+Tables are created using the pipe character with whitespace around it
+as a cell boundary and the newline as a row separator. In library
+documentations normal newlines are enough, but in test suite, test
+case and keyword documentations the explicit newline character
+sequence (:code:`\\n`) is needed::
+
+   | *A*  | *B*   | *C*   |\n
+   | _1_  | Hello | world |\n
+   | _2_  | Hi    |       |\n
+
+The created table always has a thin border and the text is
+left-aligned. Formatting using bold and italic works also in table
+cells, so it is possible to create headers. For example the above
+documentation would be formatted like this:
+
+.. table::
+   :class: tabular
+
+   ========  ========  ========
+   **A**     **B**     **C**
+   *1*       Hello     world
+   *2*       Hi
+   ========  ========  ========
+
+Horizontal ruler
+~~~~~~~~~~~~~~~~
+
+Horizontal rulers (the <hr> tag) make it possible to separate larger
+sections from each others, and they can be created by having three
+hyphens alone in a line. With documentations in the test data literal
+newlines are, again, required::
+
+   Some text here.\n
+   \n
+   ---\n
+   \n
+   More text...
