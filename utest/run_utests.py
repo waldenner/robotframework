@@ -4,7 +4,7 @@
 
 usage: run_utest.py [options]
 
-options: 
+options:
     -q, --quiet     Minimal output
     -v, --verbose   Verbose output
     -d, --doc       Show test's doc string instead of name and class
@@ -20,21 +20,20 @@ import getopt
 
 
 base = os.path.abspath(os.path.normpath(os.path.split(sys.argv[0])[0]))
-for path in [ "../src", "../src/robot/libraries", "../src/robot", 
-              "../atest/testresources/testlibs" ]:
+for path in ["../src", "../src/robot/libraries", "../src/robot",
+             "../atest/testresources/testlibs" ]:
     path = os.path.join(base, path.replace('/', os.sep))
     if path not in sys.path:
         sys.path.insert(0, path)
-        
-testfile = re.compile("^test_.*\.py$", re.IGNORECASE)          
 
+testfile = re.compile("^test_.*\.py$", re.IGNORECASE)
+imported = {}
 
 def get_tests(directory=None):
     if directory is None:
         directory = base
-    sys.path.append(directory)
+    sys.path.insert(0, directory)
     tests = []
-    modules = []
     for name in os.listdir(directory):
         if name.startswith("."): continue
         fullname = os.path.join(directory, name)
@@ -42,17 +41,23 @@ def get_tests(directory=None):
             tests.extend(get_tests(fullname))
         elif testfile.match(name):
             modname = os.path.splitext(name)[0]
-            modules.append(__import__(modname))
-    tests.extend([ unittest.defaultTestLoader.loadTestsFromModule(module)
-                   for module in modules ])
-    return tests        
+            if modname in imported:
+                sys.stderr.write("Test module '%s' imported both as '%s' and "
+                                 "'%s'.\nRename one or fix test discovery.\n"
+                                 % (modname, imported[modname],
+                                    os.path.join(directory, name)))
+                sys.exit(1)
+            module = __import__(modname)
+            imported[modname] = module.__file__
+            tests.append(unittest.defaultTestLoader.loadTestsFromModule(module))
+    return tests
 
 
 def parse_args(argv):
     docs = 0
     verbosity = 1
     try:
-        options, args = getopt.getopt(argv, 'hH?vqd', 
+        options, args = getopt.getopt(argv, 'hH?vqd',
                                       ['help','verbose','quiet','doc'])
         if len(args) != 0:
             raise getopt.error, 'no arguments accepted, got %s' % (args)
