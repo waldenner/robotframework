@@ -1,17 +1,5 @@
 window.model = (function () {
 
-    var STATUS = {
-        pass: "PASS",
-        fail: "FAIL",
-        notRun: "NOT_RUN"
-    };
-
-    var KEYWORD_TYPE = {
-        kw: 'KEYWORD',
-        setup:'SETUP',
-        teardown:'TEARDOWN'
-    };
-
     function Suite(data) {
         var suite = createModelObject(data, "s");
         suite.source = data.source;
@@ -100,8 +88,8 @@ window.model = (function () {
     function suiteTeardownFailed(suite) {
         var keywords = suite.keywords();
         var maybeTeardown = keywords[keywords.length - 1];
-        if (maybeTeardown && maybeTeardown.type == KEYWORD_TYPE.teardown)
-            return maybeTeardown.status == STATUS.fail;
+        if (maybeTeardown && maybeTeardown.type == 'TEARDOWN')
+            return maybeTeardown.status == 'FAIL';
         return false;
     }
 
@@ -159,23 +147,14 @@ window.model = (function () {
         return kw;
     }
 
-    function Message(level, time, text, link) {
-        var message = {};
-        // TODO: No need to have both level and levelText
-        message.level = level;
-        message.levelText = level.toUpperCase();
-        // TODO: Do we need time, shortTime, and date?
-        // Also date should be datetime since it contains both date and time.
-        message.time = time;
-        message.shortTime = function () {
-            return timeFromDate(message.time);
+    function Message(level, date, text, link) {
+        return {
+            level: level,
+            time: timeFromDate(date),
+            date: dateFromDate(date),
+            text: text,
+            link: link
         };
-        message.date = function () {
-            return formatDate(message.time);
-        };
-        message.text = text;
-        message.link = link;
-        return message;
     }
 
     function Times(timedata) {
@@ -185,32 +164,36 @@ window.model = (function () {
         return {
             elapsedMillis: elapsed,
             elapsedTime: formatElapsed(elapsed),
-            startTime: formatDate(start),
-            endTime:  formatDate(end)
+            startTime: dateTimeFromDate(start),
+            endTime:  dateTimeFromDate(end)
         };
     }
 
     function timeFromDate(date) {
         if (!date)
-            return "N/A";
-        return shortTime(date.getHours(), date.getMinutes(),
-                         date.getSeconds(), date.getMilliseconds());
+            return 'N/A';
+        return formatTime(date.getHours(), date.getMinutes(),
+                          date.getSeconds(), date.getMilliseconds());
     }
 
-    function formatDate(date) {
+    function dateFromDate(date) {
         if (!date)
-            return "N/A";
+            return 'N/A';
         return padTo(date.getFullYear(), 4) +
                padTo(date.getMonth() + 1, 2) +
-               padTo(date.getDate(), 2) + " " +
-               shortTime(date.getHours(), date.getMinutes(),
-                         date.getSeconds(), date.getMilliseconds());
+               padTo(date.getDate(), 2);
     }
 
-    function shortTime(hours, minutes, seconds, milliseconds) {
-        return padTo(hours, 2) + ":" +
-               padTo(minutes, 2) + ":" +
-               padTo(seconds, 2) + "." +
+    function dateTimeFromDate(date) {
+        if (!date)
+            return 'N/A';
+        return dateFromDate(date) + ' ' + timeFromDate(date);
+    }
+
+    function formatTime(hours, minutes, seconds, milliseconds) {
+        return padTo(hours, 2) + ':' +
+               padTo(minutes, 2) + ':' +
+               padTo(seconds, 2) + '.' +
                padTo(milliseconds, 3);
     }
 
@@ -222,7 +205,7 @@ window.model = (function () {
         millis -= minutes * 60 * 1000;
         var seconds = Math.floor(millis / 1000);
         millis -= seconds * 1000;
-        return shortTime(hours, minutes, seconds, millis);
+        return formatTime(hours, minutes, seconds, millis);
     }
 
     function padTo(number, len) {
@@ -261,13 +244,9 @@ window.model = (function () {
         Keyword: Keyword,
         Message: Message,
         Times: Times,
-        PASS: STATUS.pass,
-        FAIL: STATUS.fail,
-        NOT_RUN: STATUS.notRun,
         formatElapsed: formatElapsed,
         containsTag: containsTag,  // Exposed for tests
         containsTagPattern: containsTagPattern,  // Exposed for tests
-        shortTime: shortTime
     };
 }());
 
