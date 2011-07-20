@@ -1,0 +1,11 @@
+window.teardownFailureOutput = {};
+window.teardownFailureOutput["errors"] = [];
+window.teardownFailureOutput["stats"] = [[{"fail":2,"label":"Critical Tests","pass":0},{"fail":2,"label":"All Tests","pass":0}],[{"combined":"i?","doc":"<b>Combined</b> &amp; escaped &lt;&amp;lt; tag doc","fail":0,"info":"combined","label":"IX","links":"Title of iX:http://X/","pass":0},{"combined":"foo & i*","fail":0,"info":"combined","label":"zap","pass":0}],[{"fail":2,"id":"s1","label":"teardownFailure","name":"teardownFailure","pass":0},{"fail":2,"id":"s1-s1","label":"teardownFailure.PassingFailing","name":"PassingFailing","pass":0}]];
+window.teardownFailureOutput["generatedMillis"] = -293;
+window.teardownFailureOutput["generator"] = "robot";
+window.teardownFailureOutput["generatedTimestamp"] = "20110715 01:35:06 GMT +03:00";
+window.teardownFailureOutput["baseMillis"] = 1310682906293;
+window.teardownFailureOutput["suite"] = [1,2,0,0,[],[0,-9,20,14],[[3,4,0,0,[],[0,-5,13],[],[[8,0,1,0,[],[1,-2,3],[[0,7,0,5,6,[1,-1,1],[],[[0,2,6]]]]],[12,0,1,0,[],[0,2,5,10],[[0,11,0,9,10,[0,3,3],[],[[6,4,10]]]]]],[],0,[2,0,2,0]]],[],[[2,11,0,9,0,[0,9,1],[],[[10,4,13]]]],1,[2,0,2,0]];
+window.teardownFailureOutput["strings"] = [];
+window.teardownFailureOutput["strings"] = window.teardownFailureOutput["strings"].concat(["*","*teardownFailure","*/home/peke/Devel/robotframework/utest/webcontent/spec/data/teardownFailure","*PassingFailing","*/home/peke/Devel/robotframework/utest/webcontent/spec/data/teardownFailure/PassingFailing.txt","*Logs the given message with the given level.","*passing","*BuiltIn.Log","*Passing","*Fails the test immediately with the given (optional) message.","*In test","*BuiltIn.Fail","*Failing","*AssertionError","*Suite teardown failed:\nAssertionError"]);
+window.settings = {"background":{"fail":"DeepPink"},"logURL":"log.html","reportURL":"report.html"};
