@@ -1,0 +1,24 @@
+*** Settings ***
+Suite Setup     Run Tests  ${EMPTY}  standard_libraries/builtin/import_resource.txt
+Force Tags      regression  pybot  jybot
+Resource        atest_resource.txt
+
+*** Test Cases ***
+
+Import Resource In Suite Setup
+    Check Test Case  ${TESTNAME}
+
+Import Resource With Sub Resources
+    Check Test Case  ${TESTNAME}
+
+Import Resource In Test Case
+    Check Test Case  ${TESTNAME}
+
+Import Resource In User Keyword
+    Check Test Case  ${TESTNAME}
+
+Variables And Keywords Imported In Test Are Available In Next
+    Check Test Case  ${TESTNAME}
+
+Import Resource Failure Is Catchable
+    Check Test Case  ${TESTNAME}
