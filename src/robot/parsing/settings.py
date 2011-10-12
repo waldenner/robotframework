@@ -13,16 +13,19 @@
 #  limitations under the License.
 
 
-class _Setting(object):
+class Setting(object):
 
     def __init__(self, setting_name, parent=None, comment=None):
         self.setting_name = setting_name
         self.parent = parent
-        self.comment = comment
-        self.reset()
+        self._set_initial_value()
+        self.comment = comment or []
+
+    def _set_initial_value(self):
+        self.value = []
 
     def reset(self):
-        self.value = []
+        self.__init__(self, self.setting_name, self.parent)
 
     @property
     def source(self):
@@ -70,9 +73,9 @@ class _Setting(object):
         return ret
 
 
-class Documentation(_Setting):
+class Documentation(Setting):
 
-    def reset(self):
+    def _set_initial_value(self):
         self.value = ''
 
     def _populate(self, value):
@@ -82,9 +85,9 @@ class Documentation(_Setting):
         return [self.setting_name, self.value]
 
 
-class Template(_Setting):
+class Template(Setting):
 
-    def reset(self):
+    def _set_initial_value(self):
         self.value = None
 
     def _populate(self, value):
@@ -100,9 +103,9 @@ class Template(_Setting):
         return ret
 
 
-class Fixture(_Setting):
+class Fixture(Setting):
 
-    def reset(self):
+    def _set_initial_value(self):
         self.name = None
         self.args = []
 
@@ -124,9 +127,9 @@ class Fixture(_Setting):
         return ret
 
 
-class Timeout(_Setting):
+class Timeout(Setting):
 
-    def reset(self):
+    def _set_initial_value(self):
         self.value = None
         self.message = ''
 
@@ -148,9 +151,9 @@ class Timeout(_Setting):
         return ret
 
 
-class Tags(_Setting):
+class Tags(Setting):
 
-    def reset(self):
+    def _set_initial_value(self):
         self.value = None
 
     def _populate(self, value):
@@ -167,15 +170,15 @@ class Tags(_Setting):
         return tags
 
 
-class Arguments(_Setting):
+class Arguments(Setting):
     pass
 
 
-class Return(_Setting):
+class Return(Setting):
     pass
 
 
-class Metadata(_Setting):
+class Metadata(Setting):
 
     def __init__(self, setting_name, parent, name, value, comment=None):
         self.setting_name = setting_name
@@ -184,6 +187,9 @@ class Metadata(_Setting):
         self.value = self._string_value(value)
         self.comment = comment
 
+    def reset(self):
+        pass
+
     def is_set(self):
         return True
 
@@ -191,7 +197,7 @@ class Metadata(_Setting):
         return [self.setting_name, self.name, self.value]
 
 
-class _Import(_Setting):
+class _Import(Setting):
 
     def __init__(self, parent, name, args=None, alias=None, comment=None):
         self.parent = parent
@@ -199,6 +205,9 @@ class _Import(_Setting):
         self.args = args or []
         self.alias = alias
         self.comment = comment
+
+    def reset(self):
+        pass
 
     @property
     def type(self):
