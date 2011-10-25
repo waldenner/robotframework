@@ -88,7 +88,7 @@ class TestBuildingSuiteExecutionResult(unittest.TestCase):
         assert_equals(self._test.name, 'First One')
         assert_equals(self._test.doc, 'Test case documentation')
         assert_equals(self._test.timeout, '')
-        assert_equals(self._test.tags, ['t1'])
+        assert_equals(list(self._test.tags), ['t1'])
         assert_equals(len(self._test.keywords), 2)
         assert_equals(self._test.status, 'PASS')
         assert_equals(self._test.starttime, '20111024 13:41:20.925')

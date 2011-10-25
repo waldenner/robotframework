@@ -196,7 +196,7 @@ class TagElement(_Element):
     tag = 'tag'
 
     def end(self, elem):
-        self._result.tags.append(elem.text)
+        self._result.tags.add(elem.text)
 
 
 class ArgumentsElement(_Element):

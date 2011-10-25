@@ -181,10 +181,27 @@ class TestNormalizedDict(unittest.TestCase):
         assert_true(str(nd) in ("{'a': 1, 'B': 1}", "{'B': 1, 'a': 1}"))
 
     def test_update(self):
-        nd = NormalizedDict({'a': 1})
-        nd.update({'b': 2})
-        assert_equals(nd['b'], 2)
+        nd = NormalizedDict({'a': 1, 'b': 1, 'c': 1})
+        nd.update({'b': 2, 'C': 2, 'D': 2})
+        for c in 'bcd':
+            assert_equals(nd[c], 2)
+            assert_equals(nd[c.upper()], 2)
         assert_true('b' in nd.keys())
+        assert_true('c' in nd.keys())
+        assert_true('C' not in nd.keys())
+        assert_true('d' not in nd.keys())
+        assert_true('D' in nd.keys())
+
+    def test_update_using_another_norm_dict(self):
+        nd = NormalizedDict({'a': 1, 'b': 1})
+        nd.update(NormalizedDict({'B': 2, 'C': 2}))
+        for c in 'bc':
+            assert_equals(nd[c], 2)
+            assert_equals(nd[c.upper()], 2)
+        assert_true('b' in nd.keys())
+        assert_true('B' not in nd.keys())
+        assert_true('c' not in nd.keys())
+        assert_true('C' in nd.keys())
 
     def test_update_with_kwargs(self):
         nd = NormalizedDict({'a': 0, 'c': 1})
@@ -216,6 +233,21 @@ class TestNormalizedDict(unittest.TestCase):
         n1['C'] = 1
         n2['C'] = 2
         assert_true(n1 == n1 != n2 == n2)
+
+    def test_cmp_with_normal_dict(self):
+        d1 = NormalizedDict()
+        d2 = {}
+        assert_true(d1 == d1 == d2 == d2)
+        d1['a'] = 1
+        assert_true(d1 == d1 != d2 == d2)
+        d2['a'] = 1
+        assert_true(d1 == d1 == d2 == d2)
+        d1['B'] = 1
+        d2['B'] = 1
+        assert_true(d1 == d1 == d2 == d2)
+        d1['c'] = d2['C'] = 1
+        d1['D'] = d2['d'] = 1
+        assert_true(d1 == d1 == d2 == d2)
 
 
 if __name__ == '__main__':

@@ -72,9 +72,8 @@ class NormalizedDict(UserDict):
 
     def update(self, dict=None, **kwargs):
         if dict:
-            UserDict.update(self, dict)
             for key in dict:
-                self._add_key(key)
+                self.set(key, dict[key])
         if kwargs:
             self.update(kwargs)
 
@@ -129,3 +128,8 @@ class NormalizedDict(UserDict):
 
     def __str__(self):
         return str(dict(self.items()))
+
+    def __cmp__(self, other):
+        if not isinstance(other, NormalizedDict):
+            other = NormalizedDict(other)
+        return UserDict.__cmp__(self, other)
