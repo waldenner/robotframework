@@ -29,6 +29,7 @@ class ExecutionResult(object):
     def __init__(self):
         self.suite = TestSuite()
         self.errors = ExecutionErrors()
+        self.generator = None
 
     @property
     def statistics(self):
@@ -160,11 +161,7 @@ class TestSuite(object):
                           included_tags, excluded_tags))
 
     def visit(self, visitor):
-        if visitor.start_suite(self) is not False:
-            self.keywords.visit(visitor)
-            self.suites.visit(visitor)
-            self.tests.visit(visitor)
-            visitor.end_suite(self)
+        visitor.visit_suite(self)
 
     # TODO: Remove and change clients to use metadata.items() directly
     def get_metadata(self):
@@ -212,9 +209,7 @@ class TestCase(object):
         return self.name
 
     def visit(self, visitor):
-        if visitor.start_test(self) is not False:
-            self.keywords.visit(visitor)
-            visitor.end_test(self)
+        visitor.visit_test(self)
 
     def __unicode__(self):
         return self.name
@@ -251,10 +246,7 @@ class Keyword(object):
         return ItemList(Message, messages)
 
     def visit(self, visitor):
-        if visitor.start_keyword(self) is not False:
-            self.keywords.visit(visitor)
-            self.messages.visit(visitor)
-            visitor.end_keyword(self)
+        visitor.visit_keyword(self)
 
     def __unicode__(self):
         return self.name
@@ -273,7 +265,7 @@ class Message(BaseMessage):
         BaseMessage.__init__(self, message, level, html, timestamp, linkable)
 
     def visit(self, visitor):
-        visitor.log_message(self)
+        visitor.visit_message(self)
 
 
 class ItemList(object):
