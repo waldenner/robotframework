@@ -119,6 +119,12 @@ Actual tests   : %s"""  % (str(list(expected_names)), str(actual_tests))
     def should_contain_tests(self, suite, *test_names):
         self.check_suite_contains_tests(suite, *test_names)
 
+    def should_not_contain_tests(self, suite, *test_names):
+        actual_names = [t.name for t in suite.tests]
+        for name in test_names:
+            if name in actual_names:
+                raise AssertionError('Suite should not have contained test "%s"' % name)
+
     def should_contain_suites(self, suite, *suite_names):
         actual_names = [s.name for s in suite.suites]
         utils.asserts.assert_equals(len(actual_names), len(suite_names), 'Wrong number of subsuites')
@@ -127,8 +133,14 @@ Actual tests   : %s"""  % (str(list(expected_names)), str(actual_tests))
                 raise AssertionError('Suite %s not found' % expected)
 
     def should_contain_tags(self, test, *tag_names):
-        utils.asserts.assert_equals(len(test.tags), len(tag_names), 'Wrong number of tagss')
+        utils.asserts.assert_equals(len(test.tags), len(tag_names), 'Wrong number of tags')
         for act, exp in zip(test.tags, tag_names):
+            utils.eq(act, exp)
+
+    def  should_contain_keywords(self, item, *kw_names):
+        actual_names =  [kw.name for kw in item.keywords]
+        utils.asserts.assert_equals(len(actual_names), len(kw_names), 'Wrong number of keywords')
+        for act, exp in zip(actual_names, kw_names):
             utils.eq(act, exp)
 
     def get_node(self, file_path, node_path=None):
