@@ -13,8 +13,10 @@
 #  limitations under the License.
 
 from robot.common import Statistics
+from robot.errors import DataError
 from robot.output import LOGGER
 from robot.result.builders import ResultFromXML as RFX
+from robot import utils
 
 from robot.reporting.outputwriter import OutputWriter
 from robot.reporting.xunitwriter import XUnitWriter
@@ -43,7 +45,7 @@ class ResultWriter(object):
         if self._xml_result is None:
             self._execution_result = RFX(*self._data_sources)
             opts = self._create_opts()
-            self._execution_result.configure(statusrc=self.settings['NoStatusRC'], **opts)
+            self._execution_result.configure(status_rc=not self.settings['NoStatusRC'], **opts)
             self._xml_result = ResultFromXML(self._execution_result, self.settings)
         return self._xml_result
 
@@ -55,7 +57,8 @@ class ResultWriter(object):
             ('exclude_tags', 'Exclude'), ('include_suites', 'SuiteNames'),
             ('include_tests', 'TestNames'), ('remove_keywords', 'RemoveKeywords'),
             ('log_level', 'LogLevel'), ('critical', 'Critical'),
-            ('noncritical', 'NonCritical')
+            ('noncritical', 'NonCritical'), ('starttime', 'StartTime'),
+            ('endtime', 'EndTime')
             ]:
             opts[opt_name] = self.settings[settings_name]
 
@@ -107,7 +110,10 @@ class ResultFromXML(object):
             return
         serializer = XUnitWriter(path)
         try:
-            self.suite.serialize(serializer)
+            self.suite.visit(serializer)
+        except:
+            raise DataError("Writing XUnit result file '%s' failed: %s" %
+                            (path, utils.get_error_message()))
         finally:
             serializer.close()
         LOGGER.output_file('XUnit', path)
