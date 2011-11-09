@@ -97,10 +97,19 @@ class StatisticsHandler(object):
         return [self._create_stat(tag) for tag in tags.stats.values()]
 
     def _parse_suite(self, suite):
-        all_stat = self._create_stat(suite.all)
-        all_stat['id'] = suite.all.id
-        all_stat['name'] = suite.all.longname
-        return [all_stat]
+        class SuiteStatVisitor(object):
+            def __init__(self, collection):
+                self.collection = collection
+            start_suite_stats = end_suite_stats = lambda *args:0
+            def suite_stat(s, stats):
+                stat = self._create_stat(stats)
+                stat['id'] = stats.id
+                stat['name'] = stats.name
+                stat['label'] = stats.longname
+                s.collection += [stat]
+        stats = []
+        suite.serialize(SuiteStatVisitor(stats))
+        return stats
 
     def _create_stat(self, stat_elem):
         return {'pass':stat_elem.passed,
@@ -142,7 +151,10 @@ class SuiteHandler(_Handler):
 
     def end_element(self, suite):
         stats = self._context.end_suite()
-        self._data_from_children.append(_StatusHandler(self._context, suite).end_element(''))
+        status = _StatusHandler(self._context, suite).end_element('')
+        if suite.message != '':
+            status.append(self._get_id(suite.message))
+        self._data_from_children.append(status)
         return self._get_name_and_sources() + self._data_from_children + \
                  [self._suites, self._tests, self._keywords,
                   int(self._teardown_failed), stats]
@@ -161,6 +173,8 @@ class TestHandler(_Handler):
         self._doc = self._get_id(utils.html_format(test.doc))
         self._data_from_children.append(self._doc)
         self._status = _StatusHandler(self._context, test).end_element('')
+        if test.message != '':
+            self._status.append(self._get_id(test.message))
 
     def add_child_data(self, data):
         self._current_children.append(data)
