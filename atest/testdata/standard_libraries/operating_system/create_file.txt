@@ -1,0 +1,40 @@
+*** Settings ***
+Test Setup      Create Base Test Directory
+Suite Teardown  Remove Base Test Directory
+Resource        os_resource.txt
+
+*** Test Cases ***
+Create File
+    Create File  ${TESTFILE}
+    Verify File  ${TESTFILE}  ${EMPTY}
+    Create File  ${TESTFILE}  This is content in\n3\nlines
+    Verify File  ${TESTFILE}  This is content in\n3\nlines
+
+Create File With Encoding
+    Create And Verify File  Just normal ASCII  ASCII
+    Create And Verify File  Hyvää yötä!  UTF-8
+    Create And Verify File  Hyvää yötä!  ISO-8859-1
+    ${russian} =  Evaluate  u'\\u0421\\u043F\\u0430\\u0441\\u0438\\u0431\\u043E'
+    Create And Verify File  ${russian}  UTF-8
+    Create And Verify File  ${russian}  ISO-8859-5
+
+Create Non-Ascii File
+    Create And Verify File  ASCII content  file=${NON ASCII}
+    Create And Verify File  ${NON ASCII}   file=${NON ASCII}
+
+Create File With Space In Name
+    Create And Verify File  file=${WITH SPACE}
+
+Create File Fails If Encoding Is Incorrect
+    [Documentation]  FAIL REGEXP: Unicode(Encode|)Error: .*
+    Create File  ${TESTFILE}  Hyvää yötä!  ASCII
+
+Append To File
+    Append To File  ${TESTFILE}  First line\n
+    Append To File  ${TESTFILE}  Second line\n  ASCII
+    Verify File  ${TESTFILE}  First line\nSecond line\n
+
+Create File To Non-Existing Dir
+    Create File  ${TESTDIR}${/}file.txt  my content
+    Verify File  ${TESTDIR}${/}file.txt  my content
+
