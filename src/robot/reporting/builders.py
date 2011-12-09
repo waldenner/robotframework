@@ -24,7 +24,7 @@ from robot.result.serializer import RebotXMLWriter
 from robot.version import get_full_version
 from robot import utils
 
-from .jswriter import SeparatingWriter, ScriptBlockWriter
+from .jswriter import ScriptBlockWriter, JsonWriter
 from .xunitwriter import XUnitWriter
 
 try:
@@ -103,9 +103,9 @@ class LogBuilder(_HTMLFileBuilder):
 
     def _write_split_log(self, index, keywords, strings, path):
         with codecs.open(path, 'w', encoding='UTF-8') as outfile:
-            writer = SeparatingWriter(outfile)
-            writer.dump_json('window.keywords%d = ' % index, keywords)
-            writer.dump_json('window.strings%d = ' % index, strings)
+            writer = JsonWriter(outfile)
+            writer.write_json('window.keywords%d = ' % index, keywords)
+            writer.write_json('window.strings%d = ' % index, strings)
             writer.write('window.fileLoading.notify("%s");\n' % os.path.basename(path))
 
 
@@ -162,8 +162,9 @@ class HTMLFileWriter(object):
 
     def _write_output_js(self):
         separator = '</script>\n<script type="text/javascript">\n'
+        writer = ScriptBlockWriter(self._outfile, separator)
         self._write_tag('script', 'type="text/javascript"',
-                        lambda: ScriptBlockWriter(separator).write_to(self._outfile, self._model, self._config))
+                        lambda: writer.write(self._model, self._config))
 
     def _inline_js_file(self, line):
         self._write_tag('script', 'type="text/javascript"',

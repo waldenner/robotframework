@@ -12,71 +12,59 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .jsondump import JsonDumper
+from .jsonwriter import JsonWriter
 
 
 class ScriptBlockWriter(object):
-    _OUTPUT = 'window.output'
-    _SETTINGS = 'window.settings'
-    _SUITE_KEY = 'suite'
-    _STRINGS_KEY = 'strings'
+    _output = 'window.output'
+    _settings = 'window.settings'
+    _suite_key = 'suite'
+    _strings_key = 'strings'
 
-    def __init__(self, separator, split_threshold=9500):
-        self._separator = separator
+    def __init__(self, output, separator, split_threshold=9500):
+        self._writer = JsonWriter(output, separator)
         self._split_threshold = split_threshold
 
-    def write_to(self, output, model, config):
-        writer = SeparatingWriter(output, self._separator)
-        writer.write(self._OUTPUT+' = {};\n')
-        writer.separator()
-        self._write_suite(writer, model.suite)
-        writer.separator()
-        self._write_strings(model.strings, writer)
-        writer.separator()
-        for key, value in model.data.items():
-            writer.dump_json(self._output_var(key)+' = ', value)
-            writer.separator()
-        writer.dump_json(self._SETTINGS+' = ', config)
+    def write(self, model, config):
+        self._start_output_block()
+        self._write_suite(model.suite)
+        self._write_strings(model.strings)
+        self._write_data(model.data)
+        self._write_config(config)
 
-    def _write_suite(self, writer, suite):
-        split_writer = SplittingSuiteWriter(writer, self._split_threshold)
+    def _start_output_block(self):
+        self._writer.write('%s = {};\n' % self._output, separator=True)
+
+    def _write_suite(self, suite):
+        split_writer = SplittingSuiteWriter(self._writer, self._split_threshold)
         mapping = split_writer.write(suite)
-        writer.dump_json(self._output_var(self._SUITE_KEY)+' = ', suite, mapping=mapping)
+        self._writer.write_json('%s = ' % self._output_var(self._suite_key),
+                                suite, mapping=mapping, separator=True)
 
-    def _output_var(self, key):
-        return self._OUTPUT+'["%s"]' % key
-
-    def _write_strings(self, strings, writer):
-        variable = self._output_var(self._STRINGS_KEY)
-        writer.write('%s = [];\n' % variable)
+    def _write_strings(self, strings):
+        variable = self._output_var(self._strings_key)
+        self._writer.write('%s = [];\n' % variable, separator=True)
         prefix = '%s = %s.concat(' % (variable, variable)
         postfix = ');\n'
         for chunk in self._chunks(strings, self._split_threshold):
-            writer.separator()
-            writer.dump_json(prefix, chunk, postfix)
+            self._writer.write_json(prefix, chunk, postfix, separator=True)
+
+    def _write_data(self, data):
+        for key in data:
+            self._writer.write_json('%s = ' % self._output_var(key), data[key],
+                                    separator=True)
+
+    def _write_config(self, config):
+        self._writer.write_json('%s = ' % self._settings, config)
+
+    def _output_var(self, key):
+        return '%s["%s"]' % (self._output, key)
 
     def _chunks(self, iterable, chunk_size):
         for index in xrange(0, len(iterable), chunk_size):
             yield iterable[index:index+chunk_size]
 
 
-class SeparatingWriter(object):
-
-    def __init__(self, output, separator=''):
-        self._dumper = JsonDumper(output)
-        self._separator = separator
-
-    def separator(self):
-        self._dumper.write(self._separator)
-
-    def dump_json(self, prefix, data, postfix=';\n', mapping=None):
-        if prefix:
-            self.write(prefix)
-        self._dumper.dump(data, mapping)
-        self.write(postfix)
-
-    def write(self, string):
-        self._dumper.write(string)
 
 #TODO: Naming
 class SplittingSuiteWriter(object):
@@ -103,10 +91,10 @@ class SplittingSuiteWriter(object):
 
     @property
     def _list_name(self):
-        return 'window.sPart%s' % self._index
+        return 'window.sPart%d' % self._index
 
     def _dump_suite_part(self, mapping, data_block):
-        self._writer.dump_json(self._list_name+' = ', data_block,
+        self._writer.write_json(self._list_name+' = ', data_block,
                                mapping=mapping)
         self._writer.separator()
         mapping[data_block] = self._list_name
