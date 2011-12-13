@@ -13,21 +13,28 @@
 #  limitations under the License.
 from robot import utils
 from robot.errors import TimeoutError
-from robot.running.timeouts.timeoutbase import _Timeout
 from robot.utils.robotthread import ThreadedRunner
 
 
-class TimeoutWithThread(_Timeout):
+class Timeout(object):
 
-    def _execute_with_timeout(self, timeout, runnable, args, kwargs):
+    def __init__(self, timeout, error, timeout_type):
+        self._timeout = timeout
+        self._error = error
+        self._timeout_type = timeout_type
+
+    def execute(self, runnable, args, kwargs):
         runner = ThreadedRunner(runnable, args, kwargs)
-        if runner.run_in_thread(timeout):
+        if runner.run_in_thread(self._timeout):
             return runner.get_result()
         try:
             runner.stop_thread()
         except:
-            raise TimeoutError('Stopping keyword after %s failed: %s'
-                               % (self.type.lower(), utils.get_error_message()))
-        raise TimeoutError(self._get_timeout_error())
+            raise TimeoutError(self._stopping_failed)
+        raise TimeoutError(self._error)
 
-_Timeout = TimeoutWithThread
+    @property
+    def _stopping_failed(self):
+        return 'Stopping keyword after timeout failed: %s' % (self._timeout_type,
+                                                              utils.get_error_message())
+
