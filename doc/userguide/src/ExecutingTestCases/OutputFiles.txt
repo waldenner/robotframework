@@ -403,7 +403,7 @@ Tags can be given a documentation with the command line option
 :opt:`tag:doc`. :opt:`tag` is the name of the tag to assign the
 documentation to, and it can also be a `simple pattern`_ matching
 multiple tags. :opt:`doc` is the assigned documentation. Underscores
-in it the documentation are automatically converted to spaces and it
+in the documentation are automatically converted to spaces and it
 can also contain `HTML formatting`_.
 
 The given documentation is shown with matching tags in the :name:`Test
@@ -468,6 +468,10 @@ of unnecessary keywords. It has two possible values:
    messages written with loglevel :msg:`WARN`. In most cases, log
    files created after this contain enough information to investigate
    possible failures.
+
+:opt:`FOR`
+   Keywords are removed only from for loops that are in passed test cases or
+   in passed suites.
 
 Removing keywords makes output files considerably smaller and thus
 faster to process further. Even when keywords are removed, names,

@@ -2,9 +2,20 @@ import os
 import re
 
 from robot import utils
-from robot.output import readers
-from robot.common import Statistics
+from robot.result.executionresult import ExecutionResultBuilder, ExecutionResult
+from robot.result import TestSuite, TestCase, Keyword
 from robot.libraries.BuiltIn import BuiltIn
+
+
+class NoSlotsKeyword(Keyword):
+    pass
+
+class NoSlotsTestCase(TestCase):
+    keyword_class = NoSlotsKeyword
+
+class NoSlotsTestSuite(TestSuite):
+    test_class = NoSlotsTestCase
+    keyword_class = NoSlotsKeyword
 
 
 class TestCheckerLibrary:
@@ -13,14 +24,15 @@ class TestCheckerLibrary:
         path = path.replace('/', os.sep)
         try:
             print "Processing output '%s'" % path
-            suite, errors = readers.process_output(path)
+            result = ExecutionResult(NoSlotsTestSuite())
+            ExecutionResultBuilder(path).build(result)
         except:
             raise RuntimeError('Processing output failed: %s'
                                % utils.get_error_message())
         setter = BuiltIn().set_suite_variable
-        setter('$SUITE', process_suite(suite))
-        setter('$STATISTICS', Statistics(suite))
-        setter('$ERRORS', process_errors(errors))
+        setter('$SUITE', process_suite(result.suite))
+        setter('$STATISTICS', result.statistics)
+        setter('$ERRORS', process_errors(result.errors))
 
     def get_test_from_suite(self, suite, name):
         tests = self.get_tests_from_suite(suite, name)
@@ -107,7 +119,7 @@ Actual tests   : %s"""  % (str(list(expected_names)), str(actual_tests))
         if len(actual_tests) != len(expected_names):
             raise AssertionError("Wrong number of tests." + tests_msg)
         for test in actual_tests:
-            if utils.eq_any(test.name, expected_names):
+            if any(utils.matches(test.name, name) for name in expected_names):
                 print "Verifying test '%s'" % test.name
                 self.check_test_status(test)
                 expected_names.remove(utils.normalize(test.name))
@@ -117,12 +129,39 @@ Actual tests   : %s"""  % (str(list(expected_names)), str(actual_tests))
         if len(expected_names) != 0:
             raise Exception("Bug in test library")
 
+    def should_contain_tests(self, suite, *test_names):
+        self.check_suite_contains_tests(suite, *test_names)
+
+    def should_not_contain_tests(self, suite, *test_names):
+        actual_names = [t.name for t in suite.tests]
+        for name in test_names:
+            if name in actual_names:
+                raise AssertionError('Suite should not have contained test "%s"' % name)
+
+    def should_contain_suites(self, suite, *suite_names):
+        actual_names = [s.name for s in suite.suites]
+        utils.asserts.assert_equals(len(actual_names), len(suite_names), 'Wrong number of subsuites')
+        for expected in suite_names:
+            if not any(utils.matches(expected, name) for name in actual_names):
+                raise AssertionError('Suite %s not found' % expected)
+
+    def should_contain_tags(self, test, *tag_names):
+        utils.asserts.assert_equals(len(test.tags), len(tag_names), 'Wrong number of tags')
+        for act, exp in zip(test.tags, tag_names):
+            utils.eq(act, exp)
+
+    def  should_contain_keywords(self, item, *kw_names):
+        actual_names =  [kw.name for kw in item.keywords]
+        utils.asserts.assert_equals(len(actual_names), len(kw_names), 'Wrong number of keywords')
+        for act, exp in zip(actual_names, kw_names):
+            utils.eq(act, exp)
+
     def get_node(self, file_path, node_path=None):
-        dom =  utils.DomWrapper(file_path)
-        return dom.get_node(node_path) if node_path else dom
+        dom =  utils.ET.parse(file_path)
+        return dom.find(node_path) if node_path else dom
 
     def get_nodes(self, file_path, node_path):
-        return  utils.DomWrapper(file_path).get_nodes(node_path)
+        return utils.ET.parse(file_path).findall(node_path)
 
 
 def process_suite(suite):
@@ -130,9 +169,11 @@ def process_suite(suite):
         process_suite(subsuite)
     for test in suite.tests:
         process_test(test)
-    suite.test_count = suite.get_test_count()
-    process_keyword(suite.setup)
-    process_keyword(suite.teardown)
+    for kw in suite.keywords:
+        process_keyword(kw)
+    suite.setup = suite.keywords.setup
+    suite.teardown = suite.keywords.teardown
+    #suite.keywords = list(suite.keywords.normal)
     return suite
 
 def process_test(test):
@@ -142,12 +183,12 @@ def process_test(test):
     else:
         test.exp_status = 'PASS'
         test.exp_message = ''
-    test.kws = test.keywords
-    test.keyword_count = test.kw_count = len(test.keywords)
     for kw in test.keywords:
         process_keyword(kw)
-    process_keyword(test.setup)
-    process_keyword(test.teardown)
+    test.setup = test.keywords.setup
+    test.teardown = test.keywords.teardown
+    test.keywords = test.kws = list(test.keywords.normal)
+    test.keyword_count = test.kw_count = len(test.keywords)
 
 def process_keyword(kw):
     if kw is None:
@@ -155,7 +196,7 @@ def process_keyword(kw):
     kw.kws = kw.keywords
     kw.msgs = kw.messages
     kw.message_count = kw.msg_count = len(kw.messages)
-    kw.keyword_count = kw.kw_count = len(kw.keywords)
+    kw.keyword_count = kw.kw_count = len(list(kw.keywords.normal))
     for subkw in kw.keywords:
         process_keyword(subkw)
 

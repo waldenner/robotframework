@@ -16,17 +16,21 @@ import sys
 from xml.sax.saxutils import XMLGenerator
 from xml.sax.xmlreader import AttributesImpl
 
-from abstractxmlwriter import AbstractXmlWriter
+from .abstractxmlwriter import AbstractXmlWriter
 
 
 class XmlWriter(AbstractXmlWriter):
 
-    def __init__(self, path):
-        self.path = path
-        self._output = open(path, 'wb')
+    def __init__(self, output):
+        self.path = output # TODO: is this attribute needed?
+        self._output = self._create_output(output)
         self._writer = XMLGenerator(self._output, encoding='UTF-8')
         self._writer.startDocument()
         self.closed = False
+
+    def _create_output(self, output):
+        return open(output, 'w') \
+            if isinstance(output, basestring) else output
 
     def _start(self, name, attrs):
         self._writer.startElement(name, AttributesImpl(attrs))

@@ -141,17 +141,6 @@ class TestNormalizedDict(unittest.TestCase):
         assert_equals(nd.data, {})
         assert_equals(nd.keys(), [])
 
-    def test_keys_are_sorted(self):
-        nd = NormalizedDict((c, None) for c in 'aBcDeFg123XyZ___')
-        assert_equals(nd.keys(), list('123_aBcDeFgXyZ'))
-
-    def test_keys_values_and_items_are_returned_in_same_order(self):
-        nd = NormalizedDict()
-        for i, c in enumerate('abcdefghijklmnopqrstuvwxyz'):
-            nd[c.upper()] = i
-            nd[c+str(i)] = 1
-        assert_equals(nd.items(), zip(nd.keys(), nd.values()))
-
     def test_len(self):
         nd = NormalizedDict()
         assert_equals(len(nd), 0)
@@ -181,10 +170,27 @@ class TestNormalizedDict(unittest.TestCase):
         assert_true(str(nd) in ("{'a': 1, 'B': 1}", "{'B': 1, 'a': 1}"))
 
     def test_update(self):
-        nd = NormalizedDict({'a': 1})
-        nd.update({'b': 2})
-        assert_equals(nd['b'], 2)
+        nd = NormalizedDict({'a': 1, 'b': 1, 'c': 1})
+        nd.update({'b': 2, 'C': 2, 'D': 2})
+        for c in 'bcd':
+            assert_equals(nd[c], 2)
+            assert_equals(nd[c.upper()], 2)
         assert_true('b' in nd.keys())
+        assert_true('c' in nd.keys())
+        assert_true('C' not in nd.keys())
+        assert_true('d' not in nd.keys())
+        assert_true('D' in nd.keys())
+
+    def test_update_using_another_norm_dict(self):
+        nd = NormalizedDict({'a': 1, 'b': 1})
+        nd.update(NormalizedDict({'B': 2, 'C': 2}))
+        for c in 'bc':
+            assert_equals(nd[c], 2)
+            assert_equals(nd[c.upper()], 2)
+        assert_true('b' in nd.keys())
+        assert_true('B' not in nd.keys())
+        assert_true('c' not in nd.keys())
+        assert_true('C' in nd.keys())
 
     def test_update_with_kwargs(self):
         nd = NormalizedDict({'a': 0, 'c': 1})
@@ -202,6 +208,42 @@ class TestNormalizedDict(unittest.TestCase):
         assert_equals(list(nd), keys)
         assert_equals([key for key in nd], keys)
 
+    def test_keys_are_sorted(self):
+        nd = NormalizedDict((c, None) for c in 'aBcDeFg123XyZ___')
+        assert_equals(nd.keys(), list('123_aBcDeFgXyZ'))
+
+    def test_iterkeys_and_keys(self):
+        nd = NormalizedDict({'A': 1, 'b': 3, 'C': 2})
+        iterator = nd.iterkeys()
+        assert_false(isinstance(iterator, list))
+        assert_equals(list(iterator), ['A', 'b', 'C'])
+        assert_equals(list(iterator), [])
+        assert_equals(list(nd.iterkeys()), nd.keys())
+
+    def test_itervalues_and_values(self):
+        nd = NormalizedDict({'A': 1, 'b': 3, 'C': 2})
+        iterator = nd.itervalues()
+        assert_false(isinstance(iterator, list))
+        assert_equals(list(iterator), [1, 3, 2])
+        assert_equals(list(iterator), [])
+        assert_equals(list(nd.itervalues()), nd.values())
+
+    def test_iteritems_and_items(self):
+        nd = NormalizedDict({'A': 1, 'b': 2, 'C': 3})
+        iterator = nd.iteritems()
+        assert_false(isinstance(iterator, list))
+        assert_equals(list(iterator), [('A', 1), ('b', 2), ('C', 3)])
+        assert_equals(list(iterator), [])
+        assert_equals(list(nd.iteritems()), nd.items())
+
+    def test_keys_values_and_items_are_returned_in_same_order(self):
+        nd = NormalizedDict()
+        for i, c in enumerate('abcdefghijklmnopqrstuvwxyz0123456789!"#%&/()=?'):
+            nd[c.upper()] = i
+            nd[c+str(i)] = 1
+        assert_equals(nd.items(), zip(nd.keys(), nd.values()))
+        assert_equals(list(nd.iteritems()), zip(nd.iterkeys(), nd.itervalues()))
+
     def test_cmp(self):
         n1 = NormalizedDict()
         n2 = NormalizedDict()
@@ -217,6 +259,26 @@ class TestNormalizedDict(unittest.TestCase):
         n2['C'] = 2
         assert_true(n1 == n1 != n2 == n2)
 
+    def test_cmp_with_normal_dict(self):
+        d1 = NormalizedDict()
+        d2 = {}
+        assert_true(d1 == d1 == d2 == d2)
+        d1['a'] = 1
+        assert_true(d1 == d1 != d2 == d2)
+        d2['a'] = 1
+        assert_true(d1 == d1 == d2 == d2)
+        d1['B'] = 1
+        d2['B'] = 1
+        assert_true(d1 == d1 == d2 == d2)
+        d1['c'] = d2['C'] = 1
+        d1['D'] = d2['d'] = 1
+        assert_true(d1 == d1 == d2 == d2)
+
+    def test_clear(self):
+        nd = NormalizedDict({'a': 1, 'B': 2})
+        nd.clear()
+        assert_equals(nd.data, {})
+        assert_equals(nd._keys, {})
 
 if __name__ == '__main__':
     unittest.main()

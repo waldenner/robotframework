@@ -13,7 +13,7 @@ from thread_resources import passing, failing, sleeping, returning, MyException
 
 
 class VariableMock(object):
-    
+
     def replace_string(self, string):
         return string
 
@@ -139,9 +139,14 @@ class TestRun(unittest.TestCase):
     def test_method_stopped_if_timeout(self):
         os.environ['ROBOT_THREAD_TESTING'] = 'initial value'
         self.tout.secs = 0.001
+        # PyThreadState_SetAsyncExc thrown exceptions are not guaranteed
+        # to occur in a specific timeframe ,, thus the actual Timeout exception
+        # maybe thrown too late in Windows.
+        # This is why we need to have an action that really will take some time (sleep 5 secs)
+        # to (almost) ensure that the 'ROBOT_THREAD_TESTING' setting is not executed before
+        # timeout exception occurs
         assert_raises_with_msg(TimeoutError, 'Test timeout 1 second exceeded.',
-                               self.tout.run, sleeping, (0.05,))
-        time.sleep(0.1)
+                               self.tout.run, sleeping, (5,))
         assert_equals(os.environ['ROBOT_THREAD_TESTING'], 'initial value')
 
     def test_zero_and_negative_timeout(self):
@@ -154,9 +159,8 @@ class TestRun(unittest.TestCase):
         tout.start()
         tout.run(passing)
         tout.secs = 0.001
-        time.sleep(0.01)
         assert_raises_with_msg(TimeoutError, 'My message',
-                               tout.run, sleeping, (1,))
+                               tout.run, sleeping, (10,))
 
 
 class TestMessage(unittest.TestCase):

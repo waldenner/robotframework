@@ -20,10 +20,10 @@ from robot.parsing import ResourceFile
 from robot.errors import FrameworkError
 from robot import utils
 
-from testlibraries import TestLibrary
+from .testlibraries import TestLibrary
 
 
-class Importer:
+class Importer(object):
 
     def __init__(self):
         self._library_cache = ImportCache()
@@ -47,21 +47,25 @@ class Importer:
         return self._resource_cache[path]
 
     def _import_library(self, name, positional, named, lib):
+        args = positional + ['%s=%s' % arg for arg in sorted(named.items())]
         key = (name, positional, named)
         if key in self._library_cache:
             LOGGER.info("Found test library '%s' with arguments %s from cache"
-                        % (name, utils.seq2str2(positional)))
+                        % (name, utils.seq2str2(args)))
             return self._library_cache[key]
         lib.create_handlers()
         self._library_cache[key] = lib
-        libtype = lib.__class__.__name__.replace('Library', '').lower()[1:]
-        LOGGER.info("Imported library '%s' with arguments %s (version %s, "
-                    "%s type, %s scope, %d keywords, source %s)"
-                    % (name, utils.seq2str2(positional), lib.version, libtype,
-                       lib.scope.lower(), len(lib), lib.source))
-        if len(lib) == 0:
-            LOGGER.warn("Imported library '%s' contains no keywords" % name)
+        self._log_imported_library(name, args, lib)
         return lib
+
+    def _log_imported_library(self, name, args, lib):
+        type = lib.__class__.__name__.replace('Library', '').lower()[1:]
+        LOGGER.info("Imported library '%s' with arguments %s "
+                    "(version %s, %s type, %s scope, %d keywords)"
+                    % (name, utils.seq2str2(args), lib.version,
+                       type, lib.scope.lower(), len(lib)))
+        if not lib:
+            LOGGER.warn("Imported library '%s' contains no keywords" % name)
 
     def _copy_library(self, lib, newname):
         libcopy = copy.copy(lib)
@@ -112,8 +116,11 @@ class ImportCache:
         return self._items
 
     def _norm_path_key(self, key):
+        if self._is_path(key):
+            return utils.normpath(key)
         if isinstance(key, tuple):
             return tuple(self._norm_path_key(k) for k in key)
-        if isinstance(key, basestring) and os.path.exists(key):
-            return utils.normpath(key)
         return key
+
+    def _is_path(self, key):
+        return isinstance(key, basestring) and os.path.isabs(key) and os.path.exists(key)

@@ -10,10 +10,10 @@ Test Case File Suite
     Should Be Equal  ${SUITE.name}  Normal
     Should Be Equal  ${SUITE.doc}  Normal test cases
     Should Be Equal  ${SUITE.metadata['Something']}  My Value
-    Should Be True  ${SUITE.metadata} == {'Something' : 'My Value'}
+    Should Be Equal as Strings   ${SUITE.metadata}  {Something: My Value}
     Check Normal Suite Defaults  ${SUITE}
-    Should Be Equal  ${SUITE.get_full_message()}  2 critical tests, 2 passed, 0 failed\n 2 tests total, 2 passed, 0 failed
-    Should Be Equal  ${SUITE.get_stat_message()}  2 critical tests, 2 passed, 0 failed\n 2 tests total, 2 passed, 0 failed
+    Should Be Equal  ${SUITE.full_message}  2 critical tests, 2 passed, 0 failed\n 2 tests total, 2 passed, 0 failed
+    Should Be Equal  ${SUITE.statistics.message}  2 critical tests, 2 passed, 0 failed\n 2 tests total, 2 passed, 0 failed
     Check Suite Contains Tests  ${SUITE}  First One  Second One
 
 Directory Suite
@@ -23,22 +23,14 @@ Directory Suite
     Should Be Equal  ${SUITE.doc}  Something
     Should Be Equal  ${SUITE.metadata['x']}  y
     Should Be Equal  ${SUITE.metadata['a']}  b
-    Should Be True   ${SUITE.get_metadata()} == [('a', 'b'), ('x', 'y')]
+    Should Be True   ${SUITE.metadata.items()} == [('a', 'b'), ('x', 'y')]
     Check Suite Got From misc/suites/ Directory
 
-Created Minimal
-    [Documentation]  Testing absolute minimal hand created suite without even any tests or subsuites
-    Run Rebot  ${EMPTY}  rebot/created_minimal.xml
-    Should Be Equal  ${SUITE.name}  My Name
-    Should Be Equal  ${SUITE.status}  PASS
-    Should Be True  ${SUITE.suites}+${SUITE.tests}==[]
-    Check Minimal Suite Defaults  ${SUITE}
-
-Created Normal
+Minimal hand-created output
     [Documentation]  Testing minimal hand created suite with tests or subsuites
     Run Rebot  ${EMPTY}  rebot/created_normal.xml
     Check Names  ${SUITE}  Root
-    Should Be True  ${SUITE.suites} == ['Sub 1','Sub 2']
+    Should Contain Suites  ${SUITE}  Sub 1  Sub 2
     Check Names  ${SUITE.suites[0]}  Sub 1  Root.
     Check Names  ${SUITE.suites[1]}  Sub 2  Root.
     Check Minimal Suite Defaults  ${SUITE}
@@ -82,8 +74,6 @@ Check Minimal Suite Times
 Check Suite Defaults
     [Arguments]  ${mysuite}  ${message}=  ${tests}=[]  ${teardown}=None
     Should Be Equal  ${mysuite.message}  ${message}
-    Should Be True  ${mysuite.critical.tags} == []
-    Should Be True  ${mysuite.critical.nons} == []
     Should Be Equal  ${mysuite.setup}  ${None}
     ${teardown_name} =  Convert To String  ${mysuite.teardown}
     Should Be Equal  ${teardown_name}  ${teardown}
@@ -91,9 +81,9 @@ Check Suite Defaults
 Check Suite Got From Misc/suites/ Directory
     Check Normal Suite Defaults  ${SUITE}  ${EMPTY}  []  BuiltIn.Log
     Should Be Equal  ${SUITE.status}  FAIL
-    Should Be True  ${SUITE.suites} == ['Fourth', 'Subsuites', 'Subsuites2', 'Tsuite1', 'Tsuite2', 'Tsuite3']
+    Should Contain Suites  ${SUITE}  Fourth  Subsuites  Subsuites2  Tsuite1  Tsuite2  Tsuite3
     Should Be True  ${SUITE.tests} == []
-    Should Be True  ${SUITE.suites[1].suites} == ['Sub1', 'Sub2']
+    Should Contain Suites  ${SUITE.suites[1]}  Sub1  Sub2
     Should Be True  ${SUITE.suites[0].suites} + ${SUITE.suites[1].suites[0].suites}+ ${SUITE.suites[1].suites[1].suites}+ ${SUITE.suites[2].suites[0].suites}+ ${SUITE.suites[3].suites} + ${SUITE.suites[4].suites} + ${SUITE.suites[5].suites}== []
     Check Suite Contains Tests  ${SUITE}  SubSuite1 First  SubSuite2 First  SubSuite3 First  SubSuite3 Second  Suite1 First  Suite1 Second
     ...  Third In Suite1  Suite2 First  Suite3 First  Suite4 First
