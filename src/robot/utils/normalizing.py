@@ -72,9 +72,8 @@ class NormalizedDict(UserDict):
 
     def update(self, dict=None, **kwargs):
         if dict:
-            UserDict.update(self, dict)
             for key in dict:
-                self._add_key(key)
+                self.set(key, dict[key])
         if kwargs:
             self.update(kwargs)
 
@@ -105,22 +104,35 @@ class NormalizedDict(UserDict):
 
     __delitem__ = pop
 
+    def clear(self):
+        UserDict.clear(self)
+        self._keys.clear()
+
     def has_key(self, key):
         return self.data.has_key(self._normalize(key))
 
     __contains__ = has_key
 
-    def keys(self):
-        return [self._keys[nkey] for nkey in sorted(self._keys)]
-
     def __iter__(self):
-        return iter(self.keys())
+        return (self._keys[norm_key] for norm_key in sorted(self._keys))
+
+    def keys(self):
+        return list(self)
+
+    def iterkeys(self):
+        return iter(self)
 
     def values(self):
-        return [self[key] for key in self]
+        return list(self.itervalues())
+
+    def itervalues(self):
+        return (self[key] for key in self)
 
     def items(self):
-        return [(key, self[key]) for key in self]
+        return list(self.iteritems())
+
+    def iteritems(self):
+        return ((key, self[key]) for key in self)
 
     def copy(self):
         copy = UserDict.copy(self)
@@ -129,3 +141,8 @@ class NormalizedDict(UserDict):
 
     def __str__(self):
         return str(dict(self.items()))
+
+    def __cmp__(self, other):
+        if not isinstance(other, NormalizedDict):
+            other = NormalizedDict(other)
+        return UserDict.__cmp__(self, other)

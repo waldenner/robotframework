@@ -13,11 +13,13 @@
 #  limitations under the License.
 
 import inspect
+import os.path
 
 from robot import utils
 from robot.errors import DataError
-from loggerhelper import AbstractLoggerProxy
-from logger import LOGGER
+
+from .loggerhelper import AbstractLoggerProxy
+from .logger import LOGGER
 
 if utils.is_jython:
     from java.lang import Object
@@ -66,13 +68,11 @@ class Listeners(object):
         for name, args in listener_data:
             try:
                 listeners.append(_ListenerProxy(name, args))
-            except:
-                message, details = utils.get_error_details()
+            except DataError, err:
                 if args:
                     name += ':' + ':'.join(args)
                 LOGGER.error("Taking listener '%s' into use failed: %s"
-                             % (name, message))
-                LOGGER.info("Details:\n%s" % details)
+                             % (name, unicode(err)))
         return listeners
 
     def start_suite(self, suite):
@@ -83,7 +83,8 @@ class Listeners(object):
                 attrs = self._get_start_attrs(suite, 'metadata')
                 attrs.update({'tests' : [t.name for t in suite.tests],
                               'suites': [s.name for s in suite.suites],
-                              'totaltests': suite.get_test_count()})
+                              'totaltests': suite.get_test_count(),
+                              'source': suite.source or ''})
                 li.call_method(li.start_suite, suite.name, attrs)
 
     def end_suite(self, suite):
@@ -93,7 +94,8 @@ class Listeners(object):
                                suite.get_full_message())
             else:
                 attrs = self._get_end_attrs(suite, 'metadata')
-                attrs['statistics'] = suite.get_stat_message()
+                attrs.update({'statistics': suite.get_stat_message(),
+                              'source': suite.source or ''})
                 li.call_method(li.end_suite, suite.name, attrs)
 
     def start_test(self, test):
@@ -215,14 +217,20 @@ class _ListenerProxy(AbstractLoggerProxy):
         self.is_java = utils.is_jython and isinstance(listener, Object)
 
     def _import_listener(self, name, args):
-        listener, source = utils.import_(name, 'listener')
-        if not inspect.ismodule(listener):
-            listener = listener(*args)
-        elif args:
-            raise DataError("Listeners implemented as modules do not take arguments")
-        LOGGER.info("Imported listener '%s' with arguments %s (source %s)"
-                    % (name, utils.seq2str2(args), source))
-        return listener
+        importer = utils.Importer('listener')
+        listener = importer.import_class_or_module(os.path.normpath(name))
+        if inspect.isclass(listener):
+            return self._instantiate_listener_class(listener, args)
+        if not args:
+            return listener
+        raise DataError("Listeners implemented as modules do not take arguments")
+
+    def _instantiate_listener_class(self, listener, args):
+        try:
+            return listener(*args)
+        except:
+            raise DataError('Creating instance failed: %s\n%s'
+                            % utils.get_error_details())
 
     def _get_version(self, listener):
         try:

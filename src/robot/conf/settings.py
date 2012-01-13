@@ -95,14 +95,14 @@ class _BaseSettings(object):
         if name in ['SuiteStatLevel', 'MonitorWidth']:
             return self._convert_to_positive_integer_or_default(name, value)
         if name in ['Listeners', 'VariableFiles']:
-            return [self._split_args_from_name(item) for item in value]
+            return [self._split_args_from_name_or_path(item) for item in value]
         if name == 'ReportBackground':
             return self._process_report_background(value)
         if name == 'TagStatCombine':
             return [self._process_tag_stat_combine(v) for v in value]
         if name == 'TagStatLink':
             return [v for v in [self._process_tag_stat_link(v) for v in value] if v]
-        if name == 'RemoveKeywords':
+        if name in ['RemoveKeywords', 'LogLevel']:
             return value.upper()
         if name in ['SplitOutputs', 'Summary', 'SummaryTitle']:
             return self._removed_in_26(name, log)
@@ -165,9 +165,9 @@ class _BaseSettings(object):
         try:
             if not os.path.exists(path):
                 os.makedirs(path)
-        except:
-            raise DataError("Can't create %s file's parent directory '%s': %s"
-                            % (type_.lower(), path, utils.get_error_message()))
+        except EnvironmentError, err:
+            raise DataError("Creating %s file directory '%s' failed: %s"
+                            % (type_.lower(), path, err.strerror))
 
     def _process_metadata_or_tagdoc(self, value):
         value = value.replace('_', ' ')
@@ -215,14 +215,17 @@ class _BaseSettings(object):
     def _get_default_value(self, name):
         return self._cli_opts[name][1]
 
-    def _split_args_from_name(self, name):
+    def _split_args_from_name_or_path(self, name):
         if ':' not in name or os.path.exists(name):
-            return name, []
-        args = name.split(':')
-        name = args.pop(0)
-        # Handle absolute Windows paths with arguments
-        if len(name) == 1 and args[0].startswith(('/', '\\')):
-            name = name + ':' + args.pop(0)
+            args = []
+        else:
+            args = name.split(':')
+            name = args.pop(0)
+            # Handle absolute Windows paths with arguments
+            if len(name) == 1 and args[0].startswith(('/', '\\')):
+                name = name + ':' + args.pop(0)
+        if os.path.exists(name):
+            name = os.path.abspath(name)
         return name, args
 
     def __contains__(self, setting):
@@ -231,6 +234,34 @@ class _BaseSettings(object):
     def __unicode__(self):
         return '\n'.join('%s: %s' % (name, self._opts[name])
                          for name in sorted(self._opts))
+
+    @property
+    def output(self):
+        return self._get_file('Output')
+
+    @property
+    def log(self):
+        return self._get_file('Log')
+
+    @property
+    def report(self):
+        return self._get_file('Report')
+
+    @property
+    def xunit(self):
+        return self._get_file('XUnitFile')
+
+    def _get_file(self, name):
+        value = self[name]
+        return value if value != 'NONE' else None
+
+    @property
+    def split_log(self):
+        return self['SplitLog']
+
+    @property
+    def status_rc(self):
+        return not self['NoStatusRC']
 
 
 class RobotSettings(_BaseSettings):
@@ -282,3 +313,62 @@ class RebotSettings(_BaseSettings):
 
     def _escape(self, value):
         return value
+
+    @property
+    def suite_config(self):
+        return {
+            'name': self['Name'],
+            'doc': self['Doc'],
+            'metadata': dict(self['Metadata']),
+            'set_tags': self['SetTag'],
+            'include_tags': self['Include'],
+            'exclude_tags': self['Exclude'],
+            'include_suites': self['SuiteNames'],
+            'include_tests': self['TestNames'],
+            'remove_keywords': self['RemoveKeywords'],
+            'log_level': self['LogLevel'],
+            'critical': self['Critical'],
+            'noncritical': self['NonCritical'],
+            'starttime': self['StartTime'],
+            'endtime': self['EndTime']
+        }
+
+    @property
+    def statistics_config(self):
+        return {
+            'suite_stat_level': self['SuiteStatLevel'],
+            'tag_stat_include': self['TagStatInclude'],
+            'tag_stat_exclude': self['TagStatExclude'],
+            'tag_stat_combine': self['TagStatCombine'],
+            'tag_stat_link': self['TagStatLink'],
+            'tag_doc': self['TagDoc'],
+        }
+
+    @property
+    def log_config(self):
+        if not self.log:
+            return {}
+        return {
+            'title': self['LogTitle'],
+            'reportURL': self._url_from_path(self.log, self.report),
+            'splitLogBase': os.path.basename(os.path.splitext(self.log)[0])
+        }
+
+    @property
+    def report_config(self):
+        if not self.report:
+            return {}
+        return {
+            'title': self['ReportTitle'],
+            'logURL': self._url_from_path(self.report, self.log),
+            'background' : self._resolve_background_colors(),
+        }
+
+    def _url_from_path(self, source, destination):
+        if not destination:
+            return None
+        return utils.get_link_path(destination, os.path.dirname(source))
+
+    def _resolve_background_colors(self):
+        colors = self['ReportBackground']
+        return {'pass': colors[0], 'nonCriticalFail': colors[1], 'fail': colors[2]}

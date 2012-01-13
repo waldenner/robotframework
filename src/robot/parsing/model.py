@@ -13,20 +13,24 @@
 #  limitations under the License.
 
 import os
+import copy
 
 from robot.errors import DataError
 from robot.variables import is_var
 from robot.output import LOGGER
 from robot import utils
+from robot.writer.serializer import Serializer
 
 from settings import (Documentation, Fixture, Timeout, Tags, Metadata,
-                      Library, Resource, Variables, Arguments, Return, Template)
+    Library, Resource, Variables, Arguments, Return, Template, Comment)
 from populators import FromFilePopulator, FromDirectoryPopulator
 
 
-def TestData(parent=None, source=None, include_suites=[], warn_on_skipped=False):
+def TestData(parent=None, source=None, include_suites=[],
+             warn_on_skipped=False):
     if os.path.isdir(source):
-        return TestDataDirectory(parent, source).populate(include_suites, warn_on_skipped)
+        return TestDataDirectory(parent, source).populate(include_suites,
+                                                          warn_on_skipped)
     return TestCaseFile(parent, source).populate()
 
 
@@ -89,8 +93,21 @@ class _TestData(object):
         LOGGER.write("Error in file '%s' in table '%s': %s"
                      % (path, table, message), level)
 
+    def save(self, **options):
+        """Serializes this datafile.
+
+        :param options: Configuration for serialization. These arguments are
+            passed to
+            :py:class:`~robot.writer.serializer.SerializationContext` as
+            keyword arguments.
+
+        See also :py:meth:`robot.writer.serializer.Serializer.serialize`
+        """
+        return Serializer().serialize(self, **options)
+
 
 class TestCaseFile(_TestData):
+    """The parsed test case file object."""
 
     def __init__(self, parent=None, source=None):
         self.directory = os.path.dirname(source) if source else None
@@ -122,6 +139,7 @@ class TestCaseFile(_TestData):
 
 
 class ResourceFile(_TestData):
+    """The parsed resource file object."""
 
     def __init__(self, source=None):
         self.directory = os.path.dirname(source) if source else None
@@ -155,6 +173,10 @@ class ResourceFile(_TestData):
 
 
 class TestDataDirectory(_TestData):
+    """The parsed test data directory object. Contains hiearchical structure
+    of other :py:class:`.TestDataDirectory` and :py:class:`.TestCaseFile`
+    objects.
+    """
 
     def __init__(self, parent=None, source=None):
         self.directory = source
@@ -197,10 +219,14 @@ class _Table(object):
 
     def __init__(self, parent):
         self.parent = parent
-        self.header = None
+        self._header = None
 
     def set_header(self, header):
-        self.header = header
+        self._header = header
+
+    @property
+    def header(self):
+        return self._header or [self.type.title() + 's']
 
     @property
     def name(self):
@@ -362,7 +388,7 @@ class VariableTable(_Table):
 
 
 class TestCaseTable(_Table):
-    type = 'testcase'
+    type = 'test case'
 
     def __init__(self, parent):
         _Table.__init__(self, parent)
@@ -379,7 +405,7 @@ class TestCaseTable(_Table):
         return bool(self.tests)
 
     def is_started(self):
-        return bool(self.header)
+        return bool(self._header)
 
 
 class KeywordTable(_Table):
@@ -409,13 +435,10 @@ class Variable(object):
         if isinstance(value, basestring):
             value = [value]  # Must support scalar lists until RF 2.7 (issue 939)
         self.value = value
-        self.comment = comment
+        self.comment = Comment(comment)
 
     def as_list(self):
-        ret = [self.name] + self.value
-        if self.comment:
-            ret.append('# %s' % self.comment)
-        return ret
+        return [self.name] + self.value + self.comment.as_list()
 
     def is_set(self):
         return True
@@ -429,6 +452,12 @@ class _WithSteps(object):
     def add_step(self, content, comment=None):
         self.steps.append(Step(content, comment))
         return self.steps[-1]
+
+    def copy(self, name):
+        new = copy.deepcopy(self)
+        new.name = name
+        self._add_to_parent(new)
+        return new
 
 
 class TestCase(_WithSteps, _WithSettings):
@@ -471,6 +500,14 @@ class TestCase(_WithSteps, _WithSettings):
         message = "Invalid syntax in %s '%s': %s" % (type_, self.name, message)
         self.parent.report_invalid_syntax(message, level)
 
+    def _add_to_parent(self, test):
+        self.parent.tests.append(test)
+
+    @property
+    def settings(self):
+        return [self.doc, self.tags, self.setup, self.template, self.timeout,
+                self.teardown]
+
     def __iter__(self):
         for element in [self.doc, self.tags, self.setup,
                         self.template, self.timeout] \
@@ -496,6 +533,13 @@ class UserKeyword(TestCase):
                 'return': lambda s: s.return_.populate,
                 'timeout': lambda s: s.timeout.populate,
                 'teardown': lambda s: s.teardown.populate}
+
+    def _add_to_parent(self, test):
+        self.parent.keywords.append(test)
+
+    @property
+    def settings(self):
+        return [self.args, self.doc, self.timeout, self.teardown, self.return_]
 
     def __iter__(self):
         for element in [self.args, self.doc, self.timeout] \
@@ -527,11 +571,14 @@ class ForLoop(_WithSteps):
     def apply_template(self, template):
         return self
 
-    def as_list(self):
+    def as_list(self, indent=False, include_comment=False):
         return [': FOR'] + self.vars + ['IN RANGE' if self.range else 'IN'] + self.items
 
     def __iter__(self):
         return iter(self.steps)
+
+    def is_set(self):
+        return True
 
 
 class Step(object):
@@ -543,7 +590,7 @@ class Step(object):
         except IndexError:
             self.keyword = None
         self.args = content[len(self.assign)+1:]
-        self.comment = comment
+        self.comment = Comment(comment)
 
     def _get_assigned_vars(self, content):
         for item in content:
@@ -571,5 +618,5 @@ class Step(object):
         if indent:
             ret.insert(0, '')
         if include_comment and self.comment:
-            ret.append('# %s' % self.comment)
+            ret += self.comment.as_list()
         return ret

@@ -110,7 +110,7 @@ Check Test Suite
     [Arguments]  ${name}  ${message}  ${status}=${None}
     ${test suite} =  Get Test Suite  ${name}
     Run Keyword If  """${status}""" != "None"  Should Be Equal  ${test suite.status}  ${status}
-    Should Be Equal  ${test suite.get_full_message()}  ${message}
+    Should Be Equal  ${test suite.full_message}  ${message}
     [Return]  ${test suite}
 
 Get Test Case
@@ -133,7 +133,7 @@ Check Test Doc
 Check Test Tags
     [Arguments]  ${test_name}  @{expected_tags}
     ${test} =  Check Test Case  ${test_name}
-    Should Be Equal  ${test.tags}  ${expected_tags}
+    Should Contain Tags  ${test}  @{expected_tags}
     [Return]  ${test}
 
 Check KW Arguments
@@ -294,5 +294,5 @@ Get Suite Stat Nodes
 
 Tag Statistics Should Be
     [Arguments]  ${tag}  ${pass}  ${fail}
-    Should Be Equal As Integers  ${tag.attrs['pass']}  ${pass}
-    Should Be Equal As Integers  ${tag.attrs['fail']}  ${fail}
+    Should Be Equal As Integers  ${tag.attrib['pass']}  ${pass}
+    Should Be Equal As Integers  ${tag.attrib['fail']}  ${fail}

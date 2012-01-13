@@ -13,43 +13,24 @@
 #  limitations under the License.
 
 import sys
-import os
 
 if __name__ == '__main__':
     sys.stderr.write("Use 'runner' or 'rebot' for executing.\n")
     sys.exit(252)  # 252 == DATA_ERROR
 
-
-# Global workaround for os.listdir bug http://bugs.jython.org/issue1593
-# This bug has been fixed in Jython 2.5.2 RC 2
-if sys.platform.startswith('java') and sys.version_info[:3] < (2,5,2):
-    from java.lang import String
-    def listdir(path):
-        items = os._listdir(path)
-        if isinstance(path, unicode):
-            items = [unicode(String(i).toString()) for i in items]
-        return items
-    os._listdir = os.listdir
-    os.listdir = listdir
-
-# Global workaround for os.stat bug http://bugs.jython.org/issue1658
-# Jython 2.5.2 RC 2 still contains this bug, but additionally the workaround used
-# here does not work on that version either.
-if sys.platform.startswith('java') and os.sep == '\\' and sys.version_info < (2,5,2):
-    os._posix = os.JavaPOSIX(os.PythonPOSIXHandler())
-    os._native_posix = False
-
 if 'pythonpathsetter' not in sys.modules:
     import pythonpathsetter
-import utils
-from output import Output, LOGGER, pyloggingconf
-from conf import RobotSettings, RebotSettings
-from running import TestSuite, STOP_SIGNAL_MONITOR
-from robot.result import ResultWriter
-from errors import (DataError, Information, INFO_PRINTED, DATA_ERROR,
-                    STOPPED_BY_USER, FRAMEWORK_ERROR)
-from variables import init_global_variables
-from version import get_version, get_full_version
+if sys.platform.startswith('java'):
+    from robot import jythonworkarounds
+from robot.conf import RobotSettings, RebotSettings
+from robot.errors import (DataError, Information, INFO_PRINTED, DATA_ERROR,
+                          STOPPED_BY_USER, FRAMEWORK_ERROR)
+from robot.reporting import ResultWriter
+from robot.running import TestSuite, STOP_SIGNAL_MONITOR
+from robot.output import Output, LOGGER, pyloggingconf
+from robot.variables import init_global_variables
+from robot.version import get_version, get_full_version
+from robot import utils
 
 
 __version__ = get_version()
@@ -85,7 +66,7 @@ def _parse_arguments(cliargs, usage, **argparser_config):
 
 def _execute(method, datasources, options):
     try:
-        suite = method(*datasources, **options)
+        rc = method(*datasources, **options)
     except DataError, err:
         _report_error(unicode(err), help=True)
         return DATA_ERROR
@@ -97,7 +78,9 @@ def _execute(method, datasources, options):
         _report_error('Unexpected error: %s' % error, details)
         return FRAMEWORK_ERROR
     else:
-        return suite.return_code
+        return rc
+    finally:
+        LOGGER.close()
 
 
 def run(*datasources, **options):
@@ -117,6 +100,7 @@ def run(*datasources, **options):
     """
     STOP_SIGNAL_MONITOR.start()
     settings = RobotSettings(options)
+    pyloggingconf.initialize(settings['LogLevel'])
     LOGGER.register_console_logger(settings['MonitorWidth'],
                                    settings['MonitorColors'])
     init_global_variables(settings)
@@ -128,9 +112,8 @@ def run(*datasources, **options):
     output.close(suite)
     if settings.is_rebot_needed():
         output, settings = settings.get_rebot_datasource_and_settings()
-        ResultWriter(settings).write_robot_results(output)
-    LOGGER.close()
-    return suite
+        ResultWriter(output).write_results(settings)
+    return suite.return_code
 
 
 def run_rebot(*datasources, **options):
@@ -151,9 +134,10 @@ def run_rebot(*datasources, **options):
     settings = RebotSettings(options)
     LOGGER.register_console_logger(colors=settings['MonitorColors'])
     LOGGER.disable_message_cache()
-    suite = ResultWriter(settings).write_rebot_results(*datasources)
-    LOGGER.close()
-    return suite
+    rc = ResultWriter(*datasources).write_results(settings)
+    if rc < 0:
+        raise DataError('No outputs created.')
+    return rc
 
 
 def _report_error(message, details=None, help=False):

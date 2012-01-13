@@ -17,16 +17,9 @@ from logger import LOGGER
 from monitor import CommandLineMonitor
 from xmllogger import XmlLogger
 from loggerhelper import LEVELS, Message
-from readers import process_output, process_outputs
-
-from robot.result.resultwriter import ResultFromXML
 
 
-# Hooks to output. Set by Output.
-# Use only if no other way available (e.g. from BuiltIn library)
-OUTPUT = None
-
-
+#TODO: Fix Public API
 def TestSuite(outpath):
     """Factory method for getting test suite from an xml output file.
 
@@ -43,7 +36,7 @@ def TestSuite(outpath):
         if path is None:
             path = outpath
         suite.set_status()
-        testoutput = ResultFromXML(suite, errors)
+        testoutput = ResultFromXml(suite, errors)
         testoutput.serialize_output(path)
 
     suite.write_to_file = write_to_file

@@ -1,25 +1,25 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="-1">
-<meta name="Generator" content="[Robot Framework template]">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="Generator" content="">
+<link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAAAIAAAAAAAAAAAAAEAAAAAAAAAAAAAAAJEBoACtnfgA5cYYAERsiAEx2lAAbKkQAcazBACZCVwAcM1cAK0ucAAMDBQAnQncASG+FABkoVQAyWmgA6f8SgvH/Ij99+GLyIinyJfn/Yi//KSLzUy9iZogpIld3/4JVVTkid7vyUjNVNVJEAGOZ6Z7pXwAABpmZkRiLAAAGiJZpmGAAAEEt3SXdxAAATC7o/u3EAAC8MRZpjasAAAY1VVVTYAAABKqqqqpAAAAADKqq4AAAAAAAv4sAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMADAADgAwAA4AcAAOAHAADgBwAAwAcAAOAHAADgDwAA8A8AAPg/AAD+fwAA">
 <link rel="stylesheet" type="text/css" href="log.css" media="all">
 <link rel="stylesheet" type="text/css" href="common.css" media="all">
 <link rel="stylesheet" type="text/css" href="print.css" media="print">
-<link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAAAIAAAAAAAAAAAAAEAAAAAAAAAAAAAAAJEBoACtnfgA5cYYAERsiAEx2lAAbKkQAcazBACZCVwAcM1cAK0ucAAMDBQAnQncASG+FABkoVQAyWmgA6f8SgvH/Ij99+GLyIinyJfn/Yi//KSLzUy9iZogpIld3/4JVVTkid7vyUjNVNVJEAGOZ6Z7pXwAABpmZkRiLAAAGiJZpmGAAAEEt3SXdxAAATC7o/u3EAAC8MRZpjasAAAY1VVVTYAAABKqqqqpAAAAADKqq4AAAAAAAv4sAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMADAADgAwAA4AcAAOAHAADgBwAAwAcAAOAHAADgDwAA8A8AAPg/AAD+fwAA">
 <script type="text/javascript" src="log.js"></script>
 <script type="text/javascript" src="lib/jquery.min.js"></script>
 <script type="text/javascript" src="lib/jquery.tmpl.min.js"></script>
-<!-- OUTPUT JS --><script type="text/javascript" src="testdata/data.js"></script>
 <script type="text/javascript" src="lib/jsxcompressor.js"></script>
 <script type="text/javascript" src="fileloading.js"></script>
 <script type="text/javascript" src="model.js"></script>
 <script type="text/javascript" src="util.js"></script>
 <script type="text/javascript" src="testdata.js"></script>
 <script type="text/javascript" src="view.js"></script>
+<!-- JS MODEL --><script type="text/javascript" src="testdata/data.js"></script>
 <title></title>
 </head>
 <body>
@@ -97,7 +97,7 @@ function makeElementVisible(element) {
             $("#" + uniqueIds[i] + "_unfoldlink").click();
         }
         if (uniqueIds && uniqueIds.length > 0) {
-            expandFailed(window.testdata.find(uniqueIds[uniqueIds.length - 1]));
+            expandCriticalFailed(window.testdata.find(uniqueIds[uniqueIds.length - 1]));
             window.location.hash = element;
         }
     });
@@ -186,8 +186,8 @@ function addTestExecutionLog(main) {
       </td>
     </tr>
     <tr>
-      <td class="suite_children">
-        <div class="indent" id="${id}_children" style="display: none;">
+      <td>
+        <div id="${id}_children" style="display: none;">
           <table class="metadata" id="${id}_metadata">
             <tr>
               <th>Full Name:</th>
@@ -250,13 +250,12 @@ function addTestExecutionLog(main) {
              onclick="closeElement('${id}');"
              style="display: none;">-</div>
         <span class="${status.toLowerCase()}">TEST&nbsp;CASE: </span>
-        <a class="name"
-           title="${fullName}">${name}</a>
+        <a class="name" title="${fullName}">${name}</a>
       </td>
     </tr>
     <tr>
       <td>
-        <div class="indent" id="${id}_children" style="display: none;">
+        <div id="${id}_children" style="display: none;">
           <table class="metadata" id="${id}_metadata">
             <tr>
               <th>Full Name:</th>
@@ -320,7 +319,7 @@ function addTestExecutionLog(main) {
     </tr>
     <tr>
       <td>
-        <div class="indent" id="${id}_children" style="display: none;">
+        <div id="${id}_children" style="display: none;">
           <table class="metadata" id="${id}_metadata">
             {{if doc()}}
             <tr>

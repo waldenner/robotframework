@@ -25,9 +25,10 @@ Programming Language :: Python
 Topic :: Software Development :: Testing
 """.strip().splitlines()
 PACKAGES = ['robot', 'robot.api', 'robot.common', 'robot.conf',
-            'robot.libraries', 'robot.output', 'robot.parsing',
-            'robot.result', 'robot.running', 'robot.utils',
-            'robot.variables']
+            'robot.libraries', 'robot.model', 'robot.output', 'robot.parsing',
+            'robot.result', 'robot.reporting', 'robot.running',
+            'robot.running.timeouts', 'robot.utils', 'robot.variables',
+            'robot.writer']
 PACKAGE_DATA = ['webcontent/'+p for p in '*.html', '*.css', '*.js', 'lib/*.js']
 if sys.platform.startswith('java'):
     SCRIPTS = ['jybot', 'jyrebot']
@@ -43,7 +44,7 @@ if 'bdist_wininst' in sys.argv:
 
 setup(
     name         = 'robotframework',
-    version      = get_version(sep='-'),
+    version      = get_version(sep=''),
     author       = 'Robot Framework Developers',
     author_email = 'robotframework@gmail.com',
     url          = 'http://robotframework.org',

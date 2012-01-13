@@ -21,11 +21,11 @@ from robot.variables import is_list_var, VariableSplitter
 from robot.output import LOGGER
 from robot import utils
 
-from keywords import Keywords
-from fixture import Teardown, KeywordTeardownListener
-from timeouts import KeywordTimeout
-from arguments import UserKeywordArguments
-from runerrors import  KeywordRunErrors
+from .keywords import Keywords
+from .fixture import Teardown, KeywordTeardownListener
+from .timeouts import KeywordTimeout
+from .arguments import UserKeywordArguments
+from .runerrors import  KeywordRunErrors
 
 
 class UserLibrary(BaseLibrary):
@@ -126,11 +126,11 @@ class UserKeywordHandler(object):
         self.timeout.replace_variables(varz)
 
     def run(self, context, arguments):
-        context.namespace.start_user_keyword(self)
+        context.start_user_keyword(self)
         try:
             return self._run(context, arguments)
         finally:
-            context.namespace.end_user_keyword()
+            context.end_user_keyword()
 
     def _run(self, context, argument_values):
         args_spec = UserKeywordArguments(self._keyword_args, self.longname)
@@ -281,12 +281,12 @@ class EmbeddedArgs(UserKeywordHandler):
         self.origname = template.name
         self._copy_attrs_from_template(template)
 
-    def run(self, context, args):
+    def _run(self, context, args):
         if not context.dry_run:
             for name, value in self.embedded_args:
                 context.get_current_vars()[name] = \
                     context.get_current_vars().replace_scalar(value)
-        return UserKeywordHandler.run(self, context, args)
+        return UserKeywordHandler._run(self, context, args)
 
     def _copy_attrs_from_template(self, template):
         self.libname = template.libname

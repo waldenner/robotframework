@@ -12,25 +12,32 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-
-from java.io import FileOutputStream
+from java.io import FileOutputStream, FileNotFoundException
 from javax.xml.transform.sax import SAXTransformerFactory
 from javax.xml.transform.stream import StreamResult
 from org.xml.sax.helpers import AttributesImpl
 
-from abstractxmlwriter import AbstractXmlWriter
+from .abstractxmlwriter import AbstractXmlWriter
 
 
 class XmlWriter(AbstractXmlWriter):
 
     def __init__(self, path):
         self.path = path
-        self._output = FileOutputStream(path)
+        self._output = self._create_output(path)
         self._writer = SAXTransformerFactory.newInstance().newTransformerHandler()
         self._writer.setResult(StreamResult(self._output))
         self._writer.startDocument()
         self.content('\n')
         self.closed = False
+
+    def _create_output(self, output):
+        if not isinstance(output, basestring):
+            return output
+        try:
+            return FileOutputStream(output)
+        except FileNotFoundException, err:
+            raise IOError(-1, err.getMessage(), output)
 
     def _start(self, name, attrs):
         self._writer.startElement('', '', name, self._get_attrs_impl(attrs))
