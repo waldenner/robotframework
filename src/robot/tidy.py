@@ -86,7 +86,7 @@ from StringIO import StringIO
 if 'robot' not in sys.modules:
     import pythonpathsetter   # running tidy.py as script
 
-from robot.utils import ArgumentParser
+from robot import utils
 from robot.errors import DataError, Information
 from robot.parsing import ResourceFile, TestDataDirectory, TestCaseFile
 from robot.parsing.populators import FromFilePopulator
@@ -101,7 +101,7 @@ class Tidy(object):
         output = StringIO()
         data = self._create_datafile(path)
         data.save(output=output, **self._options)
-        return output.getvalue()
+        return output.getvalue().decode('UTF-8')
 
     def directory(self, path):
         self._save_directory(TestDataDirectory(source=path).populate())
@@ -129,7 +129,8 @@ class Tidy(object):
 
     def _create_datafile(self, source):
         if self._is_init_file(source):
-            return self._create_init_file(source)
+            dir_ = os.path.dirname(source)
+            return TestDataDirectory(source=dir_).populate(recurse=False)
         try:
             return TestCaseFile(source=source).populate()
         except DataError:
@@ -141,18 +142,11 @@ class Tidy(object):
     def _is_init_file(self, source):
         return os.path.splitext(os.path.basename(source))[0] == '__init__'
 
-    def _create_init_file(self, source):
-        data = TestDataDirectory()
-        data.source = os.path.dirname(source)
-        data.initfile = source
-        FromFilePopulator(data).populate(source)
-        return data
-
 
 class TidyCommandLine(object):
 
     def __init__(self, usage):
-        self._parser = ArgumentParser(usage)
+        self._parser = utils.ArgumentParser(usage)
 
     def run(self, args):
         options, inputs = self._parse_args(args)
@@ -183,7 +177,13 @@ class TidyCommandLine(object):
 
 
 def console(msg):
-    print msg
+    if sys.stdout.isatty():
+        msg = utils.encode_output(msg)
+    else:
+        if os.sep == '\\' and 'b' not in sys.stdout.mode:
+            msg = msg.replace('\r\n', '\n')
+        msg = msg.encode('UTF-8')
+    sys.stdout.write(msg)
 
 
 if __name__ == '__main__':
