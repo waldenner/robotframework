@@ -12,47 +12,42 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from robot.writer.dataextractor import DataExtractor
+
 
 class _Aligner(object):
 
-    def __init__(self, widths, align_last_column=False):
+    def __init__(self, widths):
         self._widths = widths
-        self._align_last_column = align_last_column
 
     def align_rows(self, rows):
         return [self.align_row(r) for r in rows]
 
     def align_row(self, row):
-        for index, col in enumerate(row[:self._last_aligned_column(row)]):
+        for index, col in enumerate(row):
             if len(self._widths) <= index:
-                continue
+                break
             row[index] = row[index].ljust(self._widths[index])
         return row
-
-    def _last_aligned_column(self, row):
-        return len(row) if self._align_last_column else -1
 
 
 class FirstColumnAligner(_Aligner):
 
-    def __init__(self, cols, first_column_width):
+    def __init__(self, first_column_width):
         _Aligner.__init__(self, [first_column_width])
 
 
 class ColumnAligner(_Aligner):
 
-    def __init__(self, first_column_width, table, align_last_column):
-        self._first_column_width = first_column_width
-        _Aligner.__init__(self, self._count_justifications(table),
-            align_last_column)
+    def __init__(self, first_column_width, table):
+        _Aligner.__init__(self, self._count_widths(first_column_width, table))
 
-    def _count_justifications(self, table):
-        result = [self._first_column_width] + [len(h) for h in table.header[1:]]
-        for element in [list(kw) for kw in list(table)]:
-            for step in element:
-                for index, col in enumerate(step.as_list()):
-                    index += 1
-                    if len(result) <= index:
-                        result.append(0)
+    def _count_widths(self, first_column_width, table):
+        result = [first_column_width] + [len(h) for h in table.header[1:]]
+        for row in DataExtractor().rows_from_table(table):
+            for index, col in enumerate(row):
+                if len(result) <= index:
+                    result.append(len(col))
+                else:
                     result[index] = max(len(col), result[index])
         return result

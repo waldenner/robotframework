@@ -22,36 +22,26 @@ from .rowsplitter import RowSplitter
 class _DataFileFormatter(object):
     _want_names_on_first_content_row = False
 
-    def __init__(self, cols):
-        self._splitter = RowSplitter(cols)
-        self._cols = cols
+    def __init__(self, column_count):
+        self._splitter = RowSplitter(column_count)
+        self._column_count = column_count
         self._extractor = DataExtractor(self._want_names_on_first_content_row)
 
-    def empty_row(self):
-        return self._format_row([])
+    def empty_row_after(self, table):
+        return self._format_row([], table)
 
-    def header_row(self, table):
+    def format_header(self, table):
         return self._format_row(self._header_for(table))
 
-    def setting_table(self, settings):
-        return self._format_table(settings)
-
-    def variable_table(self, variables):
-        return self._format_table(variables)
-
-    def test_table(self, tests):
-        return self._format_table(tests)
-
-    def keyword_table(self, keywords):
-        return self._format_table(keywords)
-
-    def _format_table(self, table):
+    def format_table(self, table):
         rows = self._extractor.rows_from_table(table)
         if self._should_split_rows(table):
             return self._split_rows(rows, table)
         return [self._format_row(r, table) for r in rows]
 
     def _should_split_rows(self, table):
+        if self._should_align_columns(table):
+            return False
         return True
 
     def _split_rows(self, rows, table):
@@ -65,11 +55,15 @@ class _DataFileFormatter(object):
     def _is_indented_table(self, table):
         return bool(table is not None and table.type in ['test case', 'keyword'])
 
+    def _escape_consecutive_whitespace(self, row):
+        return [re.sub('\s\s+(?=[^\s])',
+            lambda match: '\\'.join(match.group(0)), item.replace('\n', ' ')) for item in row]
+
     def _format_row(self, row, table=None):
-        return row
+        raise NotImplementedError
 
     def _header_for(self, table):
-        return table.header
+        raise NotImplementedError
 
 
 class TsvFormatter(_DataFileFormatter):
@@ -78,17 +72,23 @@ class TsvFormatter(_DataFileFormatter):
         return ['*%s*' % cell for cell in table.header]
 
     def _format_row(self, row, table=None):
-        return self._pad(row)
+        return self._pad(self._escape(row))
+
+    def _escape(self, row):
+        return self._escape_consecutive_whitespace(
+            self._escape_tabs(row))
+
+    def _escape_tabs(self, row):
+        return [c.replace('\t', '\\t') for c in row]
 
     def _pad(self, row):
         row = [cell.replace('\n', ' ') for cell in row]
-        return row + [''] * (self._cols - len(row))
+        return row + [''] * (self._column_count - len(row))
 
 
 class TxtFormatter(_DataFileFormatter):
     _test_or_keyword_name_width = 18
     _setting_and_variable_name_width = 14
-    _align_last_column = False
 
     def _format_row(self, row, table=None):
         row = self._escape(row)
@@ -99,36 +99,29 @@ class TxtFormatter(_DataFileFormatter):
 
     def _aligner_for(self, table):
         if table and table.type in ['setting', 'variable']:
-            return FirstColumnAligner(self._cols, self._setting_and_variable_name_width)
+            return FirstColumnAligner(self._setting_and_variable_name_width)
         if self._should_align_columns(table):
-            return ColumnAligner(self._test_or_keyword_name_width, table,
-                                 self._align_last_column)
+            return ColumnAligner(self._test_or_keyword_name_width, table)
         return None
 
     def _header_for(self, table):
-        return ['*** %s ***' % table.header[0]] + table.header[1:]
-
-    def _should_split_rows(self, table):
-        if self._should_align_columns(table):
-            return False
-        return True
+        header = ['*** %s ***' % table.header[0]] + table.header[1:]
+        aligner = self._aligner_for(table)
+        if aligner:
+            return aligner.align_row(header)
+        return header
 
     def _escape(self, row):
         return self._escape_consecutive_whitespace(
             self._escape_empty_cell_from_start(row))
 
     def _escape_empty_cell_from_start(self, row):
-        if len(row) >= 2 and row[0] == '' and row[1] == '':
+        if len(row) >= 2 and row[0] == row[1] == '':
             row[1] = '\\'
         return row
 
-    def _escape_consecutive_whitespace(self, row):
-        return [re.sub('\s\s+(?=[^\s])',
-                lambda match: '\\'.join(match.group(0)), item.replace('\n', ' ')) for item in row]
-
 
 class PipeFormatter(TxtFormatter):
-    _align_last_column = True
 
     def _escape(self, row):
         row = self._format_empty_cells(row)
