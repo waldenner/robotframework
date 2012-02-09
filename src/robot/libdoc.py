@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #  Copyright 2008-2012 Nokia Siemens Networks Oyj
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +20,8 @@ USAGE = """Robot Framework Library and Resource File Documentation Generator
 
 TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
+Version:  <VERSION>
+
 Usage:  libdoc.py [options] library_or_resource
 
 This script can generate keyword documentation in HTML and XML formats. The
@@ -28,7 +32,9 @@ Documentation can be created for both test libraries and resource files. All
 library and resource file types are supported, and also earlier generated
 documentation in XML format can be used as input.
 
-Options:
+Options
+=======
+
  -a --argument value *    Possible arguments that a library needs.
  -f --format HTML|XML     Specifies whether to generate HTML or XML output.
                           The default value is got from the output file
@@ -47,16 +53,12 @@ Options:
  -T --title title         Sets the title of the generated HTML documentation.
                           Underscores in the given title are automatically
                           converted to spaces.
- -S --styles styles       Overrides the default styles. If the given 'styles'
-                          is a path to an existing file, styles will be read
-                          from it. If it is string a 'NONE', no styles will be
-                          used. Otherwise the given text is used as-is.
  -P --pythonpath path *   Additional path(s) to insert into PYTHONPATH.
  -E --escape what:with *  Escapes characters which are problematic in console.
                           'what' is the name of the character to escape and
                           'with' is the string to escape it with.
                           <-------------------ESCAPES------------------------>
- -h --help                Print this help.
+ -h -? --help             Print this help.
 
 For more information see either the tool's wiki page at
 http://code.google.com/p/robotframework/wiki/LibraryDocumentationTool
@@ -78,13 +80,13 @@ from robot.doctools import LibraryDoc, LibraryDocOutput, LibraryDocWriter
 class LibDoc(Application):
 
     def __init__(self):
-        Application.__init__(self, USAGE, auto_version=False)
+        Application.__init__(self, USAGE, arg_limits=1, auto_version=False)
 
     def main(self, library_or_resource, argument=None, name='', version='',
              format='HTML', output=None, title='', styles=None):
         libdoc = LibraryDoc(library_or_resource[0], argument, name, version)
         with LibraryDocOutput(output) as outfile:
-            LibraryDocWriter(format, title, styles).write(libdoc, outfile)
+            LibraryDocWriter(format, title).write(libdoc, outfile)
 
 
 def libdoc_cli(args):
