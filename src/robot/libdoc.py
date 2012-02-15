@@ -14,37 +14,30 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from __future__ import with_statement
-
 USAGE = """Robot Framework Library and Resource File Documentation Generator
-
-TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
 Version:  <VERSION>
 
 Usage:  libdoc.py [options] library_or_resource
 
 This script can generate keyword documentation in HTML and XML formats. The
-former is suitable for humans and the latter for RIDE, RFDoc, and other tools.
-This script can also upload XML documentation to RFDoc system.
+former is suitable for humans and the latter for RIDE and other tools.
 
-Documentation can be created for both test libraries and resource files. All
-library and resource file types are supported, and also earlier generated
-documentation in XML format can be used as input.
+Documentation can be generated for both test libraries and resource files.
+All library and resource file types are supported, and also documentation
+generated earlier in XML format can be used as input.
 
 Options
 =======
 
- -a --argument value *    Possible arguments that a library needs.
+ -a --argument value *    Possible argument(s) that a library needs.
  -f --format HTML|XML     Specifies whether to generate HTML or XML output.
-                          The default value is got from the output file
-                          extension and if the output is not specified the
-                          default is HTML.
- -o --output path         Where to write the generated documentation. Can be
-                          either a directory or a file, or a URL pointing to
-                          RFDoc system's upload page. The default value is the
-                          directory where the script is executed from. If
-                          a URL is given, it must start with 'http://'.
+                          If this options is not used, the format is got
+                          from the extension of output, if given. Otherwise
+                          the default is HTML.
+ -o --output path         File to write the generated documentation to. If
+                          not given, documentation if written to the standard
+                          output.
  -n --name newname        Sets the name of the documented library or resource.
  -v --version newversion  Sets the version of the documented library or
                           resource.
@@ -55,21 +48,23 @@ Options
                           <-------------------ESCAPES------------------------>
  -h -? --help             Print this help.
 
-For more information see either the tool's wiki page at
-http://code.google.com/p/robotframework/wiki/LibraryDocumentationTool
-or tools/libdoc/doc/libdoc.html file inside source distributions.
+Examples:
+  python -m robot.libdoc MyLibrary.py
+  python -m robot.libdoc --output spec.xml myresource.txt
+  python libdoc.py --python mylibdir --format xml MyLibrary
 
-TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+For more information see the Robot Framework user guide at
+http://code.google.com/p/robotframework/wiki/UserGuide
 """
 
 import sys
+import os
 
 if 'robot' not in sys.modules:
     import pythonpathsetter   # running libdoc.py as script
 
 from robot.utils import Application
-
-from robot.doctools import LibraryDoc, LibraryDocOutput, LibraryDocWriter
+from robot.libdocpkg import LibraryDocumentation
 
 
 class LibDoc(Application):
@@ -78,14 +73,26 @@ class LibDoc(Application):
         Application.__init__(self, USAGE, arg_limits=1, auto_version=False)
 
     def main(self, library_or_resource, argument=None, name='', version='',
-             format='HTML', output=None, styles=None):
-        libdoc = LibraryDoc(library_or_resource[0], argument, name, version)
-        with LibraryDocOutput(output) as outfile:
-            LibraryDocWriter(format).write(libdoc, outfile)
+             format='HTML', output=None):
+        libdoc = LibraryDocumentation(library_or_resource[0], argument,
+                                      name, version)
+        libdoc.save(output, self._get_format(format, output))
+
+    def _get_format(self, format, output):
+        if format:
+            return format
+        if output:
+            return os.path.splitext(output)[1][1:]
+        return 'HTML'
 
 
 def libdoc_cli(args):
     LibDoc().execute_cli(args)
+
+def libdoc(library_or_resource, arguments=None, name='', version='',
+           format='HTML', output=None):
+    LibDoc().execute(library_or_resource, argument=arguments, name=name,
+                     version=version, format=format, output=output)
 
 
 if __name__ == '__main__':
