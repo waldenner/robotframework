@@ -1,0 +1,41 @@
+*** Settings ***
+Force Tags       regression    pybot    jybot
+Resource         libdoc_resource.txt
+Test Template    Run libdoc and verify error
+
+
+*** Variable ***
+${USAGE TIP}    \nTry --help for usage information.\n
+
+*** Test Cases ***
+
+No arguments
+    ${EMPTY}          Expected at least 2 arguments, got 0.
+
+Too many arguments when creating output
+    MyLib out.xml extra      Only two arguments allowed when writing output.
+
+Too many arguments with version
+    Dialogs version extra    Command 'version' does not take arguments.
+
+Invalid option
+    --invalid         option --invalid not recognized
+
+Invalid format
+    -f XXX BuiltIn out.html    Format must be either 'HTML' or 'XML', got 'XXX'.
+    BuiltIn out.ext            Format must be either 'HTML' or 'XML', got 'EXT'.
+
+Non-existing library
+    NonExistingLib out.html   Importing test library 'NonExistingLib' failed: *
+
+Invalid resource
+    ${CURDIR}/invalid_usage.txt out.html
+    ...   [ ERROR ] *: Non-existing setting 'Force Tags'.
+    ...   [ ERROR ] *: Non-existing setting 'Test Template'.
+    ...   Resource file '*' contains a test case table which is not allowed.
+
+
+*** Keywords ***
+Run libdoc and verify error
+    [Arguments]    ${args}    @{error}
+    Run libdoc and verify output    ${args}    @{error}    ${USAGE TIP}
