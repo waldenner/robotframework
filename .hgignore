@@ -1,0 +1,15 @@
+syntax: glob
+
+tmp
+tmp?
+build
+dist
+atest/results
+.idea
+.*project
+*.pyc
+*$py.class
+ext-lib
+*.iml
+.DS_Store
+doc/api/_build
