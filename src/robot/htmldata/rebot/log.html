@@ -48,7 +48,7 @@ $(document).ready(function() {
     addStatistics();
     addErrors();
     addTestExecutionLog(topsuite);
-    addLogLevelSelector('TRACE', 'TRACE');
+    addLogLevelSelector(window.output['minLevel'], 'TRACE');
     if (window.location.hash) {
         makeElementVisible(window.location.hash.substring(1));
         scrollToHash();
@@ -337,7 +337,7 @@ function addTestExecutionLog(main) {
 
 <script type="text/x-jquery-tmpl" id="logLevelSelectorTemplate">
   <div id="log_level_selector">
-    Log level:
+  Log level:
     <select onchange="logLevelSelected(this.options[selectedIndex].value);">
       <option value="2">INFO</option>
       <option value="1">DEBUG</option>
