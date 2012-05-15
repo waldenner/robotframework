@@ -3,6 +3,7 @@ import os
 from os.path import abspath
 
 from robot.conf.settings import _BaseSettings, RobotSettings, RebotSettings
+from robot.errors import DataError
 from robot.utils.asserts import assert_equals, assert_false
 
 
@@ -69,6 +70,37 @@ class TestRobotAndRebotSettings(unittest.TestCase):
         orig_opts = RobotSettings()._opts
         RebotSettings()
         assert_equals(RobotSettings()._opts, orig_opts)
+
+    def test_log_levels(self):
+        self._verify_log_level('TRACE')
+        self._verify_log_level('DEBUG')
+        self._verify_log_level('INFO')
+        self._verify_log_level('WARN')
+        self._verify_log_level('NONE')
+
+    def _verify_log_level(self, input, level=None, default=None):
+        level = level or input
+        settings = RobotSettings({'loglevel':input})
+        assert_equals(level, settings['LogLevel'])
+        if default:
+            assert_equals(default, settings['DefaultLogLevel'])
+
+    def test_log_levels_with_default(self):
+        self._verify_log_level('TRACE:INFO', level='TRACE', default='INFO')
+        self._verify_log_level('TRACE:debug', level='TRACE', default='DEBUG')
+        self._verify_log_level('DEBUG:INFO', level='DEBUG', default='INFO')
+
+    def test_default_log_level_validation(self):
+        self._verify_raises_dataerror('INFO:TRACE')
+        self._verify_raises_dataerror('DEBUG:TRACE')
+        self._verify_raises_dataerror('DEBUG:INFO:FOO')
+        self._verify_raises_dataerror('INFO:bar')
+        self._verify_raises_dataerror('bar:INFO')
+
+    def _verify_raises_dataerror(self, input):
+        self.assertRaises(DataError, lambda: RobotSettings({'loglevel':input}))
+
+
 
 
 if __name__ == '__main__':
