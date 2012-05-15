@@ -16,7 +16,7 @@ import os
 
 from robot import utils
 from robot.errors import DataError, FrameworkError
-from robot.output import LOGGER
+from robot.output import LOGGER, loggerhelper
 
 
 class _BaseSettings(object):
@@ -35,6 +35,7 @@ class _BaseSettings(object):
                  'Report'           : ('report', 'report.html'),
                  'XUnitFile'        : ('xunitfile', 'NONE'),
                  'SplitLog'         : ('splitlog', False),
+                 'DefaultLogLevel'  : ('defaultloglevel', 'TRACE'),
                  'TimestampOutputs' : ('timestampoutputs', False),
                  'LogTitle'         : ('logtitle', None),
                  'ReportTitle'      : ('reporttitle', None),
@@ -100,10 +101,27 @@ class _BaseSettings(object):
         if name == 'TagStatLink':
             return [v for v in [self._process_tag_stat_link(v) for v in value] if v]
         if name == 'LogLevel':
-            return value.upper()
+            return self._process_log_level(value)
         if name == 'RemoveKeywords':
             return [v.upper() for v in value]
         return value
+
+    def _process_log_level(self, value):
+        values = value.upper().split(':')
+        if len(values) == 2:
+            self._validate_log_level_and_default(*values)
+            self['DefaultLogLevel'] = values[1]
+        elif len(values) > 2:
+            raise DataError('Invalid log level "%s"' % value)
+        return values[0]
+
+    def _validate_log_level_and_default(self, log_level, default):
+        if log_level not in loggerhelper.LEVELS:
+            raise DataError('Invalid log level "%s"' % log_level)
+        if default not in loggerhelper.LEVELS:
+            raise DataError('Invalid log level "%s"' % default)
+        if not loggerhelper.IsLogged(log_level)(default):
+            raise DataError('Default shown log level "%s" is not shown when using log level "%s"' % (default, log_level))
 
     def __getitem__(self, name):
         if name not in self._cli_opts:
@@ -331,7 +349,8 @@ class RebotSettings(_BaseSettings):
         return {
             'title': self['LogTitle'],
             'reportURL': self._url_from_path(self.log, self.report),
-            'splitLogBase': os.path.basename(os.path.splitext(self.log)[0])
+            'splitLogBase': os.path.basename(os.path.splitext(self.log)[0]),
+            'defaultLogLevel': self['DefaultLogLevel']
         }
 
     @property

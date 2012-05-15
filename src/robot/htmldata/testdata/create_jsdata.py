@@ -21,7 +21,7 @@ from robot.reporting.jswriter import JsResultWriter
 from robot.utils import utf8open
 
 def run_robot(testdata, outxml):
-    robot.run(testdata, loglevel='TRACE', log='NONE', report='NONE', output=outxml)
+    robot.run(testdata, loglevel='DEBUG', log='NONE', report='NONE', output=outxml)
 
 
 def create_jsdata(outxml, target):
@@ -36,6 +36,7 @@ def create_jsdata(outxml, target):
     })
     result = Results(outxml, settings).js_result
     config = {'logURL': 'log.html',
+              'defaultLogLevel': 'DEBUG',
               'reportURL': 'report.html',
               'background': {'fail': 'DeepPink'}}
     with utf8open(target, 'w') as output:
