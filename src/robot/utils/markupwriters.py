@@ -91,5 +91,5 @@ class XmlWriter(_MarkupWriter):
         return xml_escape(text)
 
     def _format_attributes(self, attrs):
-        return ('%s="%s"' % (name, attribute_escape(unicode(attrs[name])))
+        return ('%s="%s"' % (name, attribute_escape(attrs[name]))
                              for name in attrs)
