@@ -1,0 +1,37 @@
+*** Settings ***
+Documentation   Tests for xunit-compatible xml-output.
+Default Tags    regression  pybot  jybot
+Resource        atest_resource.txt
+
+*** Variables ***
+${TESTDATA}  misc/pass_and_fail.txt
+${INVALID}   ${TEMPDIR}${/}ïnvälïd-xünït.xml
+
+*** Test Cases ***
+No XUnit Option Given
+    Run Tests  ${EMPTY}  ${TESTDATA}
+    Check Stdout Does Not Contain  XUnit
+
+XUnit Option Given
+    Run Tests  -x xunit.xml -l log.html  ${TESTDATA}
+    Stderr should be empty
+    Check Stdout Contains  XUnit
+    File Should Exist  ${OUTDIR}/xunit.xml
+    File Should Exist  ${OUTDIR}/log.html
+    ${root} =  Get Node  ${OUTDIR}/xunit.xml  /
+    Should Be Equal    ${root.tag}    testsuite
+    ${tests} =  Get Nodes  ${OUTDIR}/xunit.xml  testcase
+    Length Should Be  ${tests}  2
+    ${failures} =  Get Nodes  ${OUTDIR}/xunit.xml  testcase/failure
+    Length Should Be  ${failures}  1
+
+Invalid XUnit File
+    Create Directory  ${INVALID}
+    Run Tests  --XUnitFile ${INVALID} -l log.html  ${TESTDATA}
+    File Should Not Exist  ${INVALID}
+    File Should Exist  ${OUTDIR}/log.html
+    ${dir}  ${base} =  Split Path  ${INVALID}
+    ${path} =  Regexp Escape  ${INVALID}
+    Check Stderr Matches Regexp
+    ...  \\[ ERROR \\] Opening XUnit result file '${path}' failed: .*
+
