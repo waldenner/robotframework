@@ -27,11 +27,188 @@ should_match = BuiltIn().should_match
 
 
 class XML(object):
+    """Robot Framework test library for XML verification.
+
+    As the name implies, `XML` is a test library for verifying contents of XML
+    files. In practice this library is a pretty thin wrapper on top of Python's
+    [http://docs.python.org/library/xml.etree.elementtree.html|ElementTree XML API].
+
+    The library has the following three main usages:
+
+    - Parsing an XML file, or a string containing XML, into an element structure
+      and finding certain elements from it for for further analysis
+      (e.g. `Parse XML` and `Get Element` keywords).
+    - Getting text or attributes of a certain element
+      (e.g. `Get Element Text` and `Get Element Attribute`)
+    - Directly verifying text or attributes of a certain element
+      (e.g `Element Text Should Be` and `Element Attribute Should Match`)
+
+    *Finding elements with xpath*
+
+    ElementTree, and thus also this library, supports finding elements using
+    xpath expressions. ElementTree does not, however, support the full xpath
+    syntax, and what is supported depends on its version. ElementTree 1.3 that
+    is distributed with Python/Jython 2.7 supports richer syntax than versions
+    distributed with earlier Python interpreters.
+
+    Supported xpath syntax is explained below and
+    [http://effbot.org/zone/element-xpath.htm|ElementTree documentation]
+    provides more details. In the examples `${XML}` refers to the following
+    example structure:
+
+    | <example>
+    |   <first>text</first>
+    |   <second id="2">
+    |     <child/>
+    |   </second>
+    |   <third>
+    |     <child>more text</child>
+    |     <second id="child"/>
+    |     <child><grandchild/></child>
+    |   </third>
+    |   <html>
+    |     <p>
+    |       Text with <b>bold</b> and <i>italics</i>.
+    |     </p>
+    |   </html>
+    | </example>
+
+    The actual contents fo ${XML} can be either path to a file containing the above
+    structure, the string containing the above structure, or the parsed ElementTree
+    element.
+
+    _Tag names_
+
+    When just a single tag name is used, xpath matches all direct child
+    elements that have that tag name.
+
+    | ${elem} =        | Get Element   | ${XML}      | third  |
+    | Should Be Equal  | ${elem.tag}   | third       |        |
+    | @{children} =    | Get Elements  | ${elem}     | child  |
+    | Length Should Be | ${children}   | 2           |        |
+
+    _Paths_
+
+    Paths are created by combining tag names with a forward slash (`/`).
+    For example, `parent/child` matches all `child` elements under `parent`
+    element. Notice that if there are multiple `parent` elements that all
+    have `child` elements, `parent/child` xpath will match all these `child`
+    elements.
+
+    | ${elem} = | Get Element | ${XML} | second/child            |
+    | ${elem} = | Get Element | ${XML} | third/child/grandchild  |
+
+    _Wildcards_
+
+    An asterisk (`*`) can be used in paths instead of a tag name to denote
+    any element.
+
+    | @{children} =    | Get Elements | ${XML} | */child |
+    | Length Should Be | ${children}  | 3      |         |
+
+    _Current element_
+
+    The current element is denoted with a dot (`.`). Normally the current
+    element is implicit and does not need to be included in the path.
+
+    _Parent element_
+
+    The parent element of another element is denoted with two dots (`..`).
+    Notice that it is not possible to refer to the parent of the current
+    element. This syntax is supported only in ElementTree 1.3 that is
+    distributed with Python/Jython 2.7.
+
+    | ${elem} =       | Get Element | ${XML} | */second/.. |
+    | Should Be Equal | ${elem.tag} | third  |             |
+
+    _Search all sub elements_
+
+    Two forward slashes (`//`) mean that all sub elements, not only the
+    direct children, are searched. If the search is started from the current
+    element, an explicit dot is required.
+
+    | @{elements} =    | Get Elements | ${XML} | .//second |
+    | Length Should Be | ${elements}  | 2      |           |
+
+    _Predicates_
+
+    Predicates allow selecting elements using also other criteria than tag
+    names such as attributes or position. They are specified after the normal
+    tag name or path using syntax `path[predicate]`. The path can have
+    wildcards and other special syntax explained above.
+
+    Notice that predicates are supported only in ElementTree 1.3 that is
+    shipped with Python/Jython 2.7. What predicates are supported in that
+    version is explained in the table below.
+
+    | _Predicate_     | _Matches_ | _Example_ |
+    | @attrib         | Elements with attribute `attrib`. | second[@id] |
+    | @attrib="value" | Elements with attribute `attrib` having value `value`. | *[@id="2"] |
+    | position        | Elements at the specified position. Position can be an integer (starting from 1), expression `last()`, or relative expression like `last() - 1`. | third/child[1] |
+    | tag             | Elements with a child element named `tag`. | third/child[grandchild] |
+
+    Predicates can also be stacked like `path[predicate1][predicate2]`.
+    A limitation is that possible position predicate must always be first.
+
+    *Elements attributes*
+
+    All keywords returning elements, such as `Parse XML`, and `Get Element`,
+    return ElementTree's
+    [http://docs.python.org/library/xml.etree.elementtree.html#xml.etree.ElementTree.Element|Element classes].
+    These elements can be used as inputs for other keywords, but they also
+    contain several useful attributes that can be accessed directly using
+    the extended variable syntax.
+
+    The attributes that are both useful and convenient to use in the test
+    data are explained below. Also other attributes, including methods, can
+    be accessed, but that is typically better to do in custom libraries than
+    directly in the test data.
+
+    The examples use same `${XML}` structure as earlier examples.
+
+    _tag_
+
+    The tag of the element.
+
+    | ${root} =       | Parse XML   | ${XML}  |
+    | Should Be Equal | ${root.tag} | example |
+
+    _text_
+
+    The text that the element contains or Python `None` if the element has no
+    text. Notice that the text _does not_ contain texts of possible child
+    elements nor text after or between children. Notice also that in XML
+    whitespace is significant, so the text contains also possible indentation
+    and newlines. To get also text of the possible children, optionally
+    whitespace normalized, use `Get Element Text` keyword.
+
+    | ${1st} =        | Get Element | ${XML}  | first        |
+    | Should Be Equal | ${1st.text} | text    |              |
+    | ${2nd} =        | Get Element | ${XML}  | second/child |
+    | Should Be Equal | ${2nd.text} | ${NONE} |              |
+    | ${p} =          | Get Element | ${XML}  | html/p       |
+    | Should Be Equal | ${p.text}   | \\n${SPACE*6}Text with${SPACE} |
+
+    _tail_
+
+    The text after the element before the next opening or closing tag. Python
+    `None` if the element has no tail. Similarly as with `text`, also `tail`
+    contains possible indentation and newlines.
+
+    | ${b} =          | Get Element    | ${XML}  | html/p/b  |
+    | Should Be Equal | ${b.tail}      | ${SPACE}and${SPACE} |
+
+    _attrib_
+
+    A Python dictionary containing attributes of the element.
+
+    | ${1st} =        | Get Element         | ${XML} | first  |
+    | Should Be Empty | ${1st.attrib}       |        |        |
+    | ${2nd} =        | Get Element         | ${XML} | second |
+    | Should Be Equal | ${2nd.attrib['id']} | 2      |        |
     """
-    Supported xpath is documented here: http://effbot.org/zone/element-xpath.htm
-    Notice that predicates (e.g. tag[@id="1"]) are supported only in ET 1.3
-    i.e in Python 2.7!
-    """
+
+    ROBOT_LIBRARY_SCOPE = 'GLOBAL'
     _whitespace = re.compile('\s+')
     _xml_declaration = re.compile('^<\?xml .*\?>\n')
 
@@ -40,8 +217,6 @@ class XML(object):
             return ET.parse(source).getroot()
 
     def get_element(self, source, xpath='.'):
-        if xpath == '.':  # ET included in Python < 2.7 does not support '.'.
-            return self._get_parent(source)
         elements = self.get_elements(source, xpath)
         if not elements:
             raise RuntimeError("No element matching '%s' found." % xpath)
@@ -50,27 +225,34 @@ class XML(object):
                                % (len(elements), xpath))
         return elements[0]
 
-    def _get_parent(self, source):
+    def get_elements(self, source, xpath):
+        source = self._parse_xml(source)
+        if xpath == '.':  # ET < 1.3 does not support '.' alone.
+            return [source]
+        return source.findall(self._get_xpath(xpath))
+
+    def _parse_xml(self, source):
         if isinstance(source, basestring):
             return self.parse_xml(source)
         return source
 
-    def get_elements(self, source, xpath):
-        return self._get_parent(source).findall(self._get_xpath(xpath))
-
-    if sys.version_info < (2, 7):
+    if sys.version_info >= (2, 7):
+        def _get_xpath(self, xpath):
+            return xpath
+    else:
         def _get_xpath(self, xpath):
             try:
                 return str(xpath)
             except UnicodeError:
-                if xpath.replace('/', '').isalnum():
-                    return xpath
-                raise RuntimeError('Non-ASCII XPATHs containing other than '
-                                   'tag names are not supported with Python '
-                                   'interpreters below 2.7.')
-    else:
-        def _get_xpath(self, xpath):
-            return xpath
+                if not xpath.replace('/', '').isalnum():
+                    logger.warn('XPATHs containing non-ASCII characters and '
+                                'other than tag names do not always work with '
+                                'Python/Jython versions prior to 2.7. Verify '
+                                'results manually and consider upgrading to 2.7.')
+                return xpath
+
+    def get_child_elements(self, source, xpath='.'):
+        return list(self.get_element(source, xpath))
 
     def get_element_text(self, source, xpath='.', normalize_whitespace=False):
         element = self.get_element(source, xpath)
@@ -194,6 +376,24 @@ class ElementComparator(object):
         self._compare(len(actual), len(expected), 'Different number of child elements',
                       location, should_be_equal)
         if not location:
-            location = actual.tag
+            location = Location(actual.tag)
         for act, exp in zip(actual, expected):
-            self.compare(act, exp, '%s/%s' % (location, act.tag))
+            self.compare(act, exp, location.child(act.tag))
+
+
+class Location(object):
+
+    def __init__(self, path):
+        self._path = path
+        self._children = {}
+
+    def child(self, tag):
+        if tag not in self._children:
+            self._children[tag] = 1
+        else:
+            self._children[tag] += 1
+            tag += '[%d]' % self._children[tag]
+        return Location('%s/%s' % (self._path, tag))
+
+    def __str__(self):
+        return self._path

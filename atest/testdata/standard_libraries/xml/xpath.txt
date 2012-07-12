@@ -5,6 +5,7 @@ Documentation    Tests ET's XPATH support documented at
 ...              expressions with non-ASCII characters require ET 1.3
 ...              (i.e. interpreter version 2.7) or newer.
 Resource         resource.txt
+Suite Setup      Add Interpreter Version to Suite Documentation
 Test Template    Get element by xpath
 
 
@@ -15,15 +16,26 @@ Tag
 Path
     another/child    child    text
 
+Path matches children from different parents
+    [Template]    NONE
+    @{elements}=    Get Elements    ${TEST}    child/grandchild
+    Length Should Be    ${elements}    2
+    :FOR    ${elem}    IN    @{elements}
+    \    Should Be Equal    ${elem.tag}    grandchild
+    Should Be Equal    ${elem.text}    ${NONE}
+
 '*'
-    */grandchild    grandchild    grand child text
+    */child    child    text
 
 '.'
     .    test
     ./another    another
 
 '//'
-    .//grandchild    grandchild
+    .//ggc    ggc
+    .//grandchild/ggc    ggc
+    child//ggc    ggc
+    another//child    child
 
 '//' returning multiple elements
     [Template]    NONE
@@ -34,12 +46,10 @@ Path
     Should Be Equal    ${elem.text}    text
 
 '..'
-    [Template]    NONE
-    ${child}=    Get Element    ${test}    .//grandchild
-    ${parent}=    Get Element    ${child}    ..
-    Should Be Equal    ${parent.attrib['id']}    2
-    ${another}=    Get Element    ${child}    ../../another
-    Should Be Equal    ${another.attrib['attr']}    value
+    another/..    test
+    another/child/..    another
+    .//ggc/..    grandchild
+    another/child/../../child[@id="3"]  child
 
 '[@attrib]'
     [Documentation]    FAIL No element matching 'child[@nonex]' found.
@@ -53,9 +63,10 @@ Path
     child[@id="xxx"]    not-found
 
 '[tag]'
-    [Documentation]    FAIL No element matching '.[nonex]' found.
-    .[grandchild]    child
-    .[nonex]    not-found
+    [Documentation]    FAIL No element matching 'child[nonex]' found.
+    another[child]    another
+    */grandchild[ggc]    grandchild
+    child[nonex]    not-found
 
 '[position]'
     [Documentation]    FAIL No element matching 'child[4]' found.
@@ -65,13 +76,15 @@ Path
 
 Stacked predicates
     child[@id][@a3='y']    child    ${NONE}
+    child/grandchild[1][ggc]    grandchild    ${NONE}
 
 Non-ASCII tag names
     täg    täg    xml=<rööt><täg/></rööt>
     täg/chïld    chïld    xml=<rööt><täg><chïld/></täg></rööt>
 
 More complex non-ASCII xpath
-    .//chïld    chïld    xml=<rööt><täg><chïld/></täg></rööt>
+    [Documentation]    FAIL Multiple elements (2) matching './/chïld' found.
+    .//chïld    chïld    xml=<rööt><chïld/><täg><chïld/></täg></rööt>
 
 
 *** Keywords ***
@@ -79,4 +92,8 @@ Get element by xpath
     [Arguments]    ${xpath}    ${tag}    ${text}=IGNORE    ${xml}=${TEST}
     ${element}=     Get Element    ${xml}    ${xpath}
     Should Be Equal    ${element.tag}    ${tag}
-    Run Keyword If    '${text}' != 'IGNORE'    Should Be Equal    ${element.text}    ${text}
+    Run Keyword If    '''${text}''' != 'IGNORE'    Should Be Equal    ${element.text}    ${text}
+
+Add Interpreter Version to Suite Documentation
+    ${version}=    Evaluate    sys.version[:3]    modules=sys
+    Set Suite Documentation    ${version}
