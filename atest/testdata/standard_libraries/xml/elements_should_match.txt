@@ -1,0 +1,62 @@
+*** Settings ***
+Resource          resource.txt
+Test Template     Elements should not match
+
+*** Test cases ***
+Elements should match
+    [Template]    Match Elements
+    <tag>content</tag>    <tag>c*</tag>
+    <tag a="1" b="421"/>    <tag a="?" b="4*"/>
+    <root>\n<tag>some\ntext</tag>tail text</root>    <root>\n<tag>some*</tag>tail??ex?</root>
+
+Different tag names
+    <tag/>   <täg/>    Different tag name: tag != täg
+
+Different attributes
+    <tag a="12"/>   <tag a="?"/>    Different value for attribute 'a': '12' does not match '?'
+    <tag a="1" c="3"/>   <tag a="?" b="?"/>
+    ...   Different attribute names: ['a', 'c'] != ['a', 'b']
+
+Different texts
+    <tag>some text</tag>   <tag>no match*</tag>  Different text: 'some text' does not match 'no match*'
+    <tag></tag>   <tag>?*</tag>    Different text: '' does not match '?*'
+
+Different tail texts
+    <root><tag/>tail</root>   <root><tag/>wrong*</root>
+    ...    Different tail text at 'root/tag': 'tail' does not match 'wrong*'
+    <root><tag/></root>   <root><tag/>?</root>
+    ...    Different tail text at 'root/tag': '' does not match '?'
+
+Differences in children
+    <root><tag/></root>    <root><different/></root>
+    ...    Different tag name at 'root/tag': tag != different
+    <a a="a"><b><c><d/></c></b></a>    <a a="a"><b><c><wrong/></c></b></a>
+    ...    Different tag name at 'a/b/c/d': d != wrong
+    <root><tag/></root>    <root><tag a="1"/></root>
+    ...    Different attribute names at 'root/tag': [] != ['a']
+    <a><b><c a="a" b="b"/></b></a>    <a><b><c a="?" b="ä*"></c></b></a>
+    ...    Different value for attribute 'b' at 'a/b/c': 'b' does not match 'ä*'
+    <root><tag/></root>    <root><tag>?</tag></root>
+    ...    Different text at 'root/tag': '' does not match '?'
+    <root><tag><c1/><c2/></tag></root>    <root><tag/></root>
+    ...    Different number of child elements at 'root/tag': 2 != 0
+
+
+Normalize whitespace
+    [Template]    NONE
+    Elements should match    <p>\n\tThis \ \ \ text\n<i>spaces \ has</i> also \ in\ttail!\n</p>
+    ...   <p>This *<i>spaces ???</i>*!</p>    normalize_whitespace=yes
+    Elements should not match    <tag>\ntext\n</tag>    <tag>\t*wrong*\t</tag>
+    ...   Different text: 'text' does not match '*wrong*'    normalize
+
+*** Keywords ***
+Match Elements
+    [Arguments]    ${source}    ${match}
+    Elements Should Match    ${source}    ${match}
+    ${source}=    Parse XML    ${source}
+    Elements Should Match    ${source}    ${match}
+
+Elements should not match
+    [Arguments]   ${source}    ${expected}    ${error}    ${normalize}=${FALSE}
+    Run Keyword and Expect Error    ${error}
+    ...    Elements Should Match   ${source}    ${expected}    ${normalize}
