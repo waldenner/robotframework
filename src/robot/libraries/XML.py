@@ -60,6 +60,12 @@ class XML(object):
     structure, other keywords also accept paths to XML files and strings
     containing XML similarly as `Parse XML`.
 
+    When the source is given as a path to a file, the forward slash character
+    (`/`) can be used as the path separator regardless the operating system.
+    On Windows also the backslash works, but it the test data it needs to be
+    escaped by doubling it (`\\\\`). Using the built-in variable `${/}`
+    naturally works too.
+
     *Example*
 
     The following simple example demonstrates parsing XML and verifying its
@@ -324,15 +330,11 @@ class XML(object):
 
         See also `Get Element`.
         """
-        source = self._parse_xml(source)
+        if isinstance(source, basestring):
+            source = self.parse_xml(source)
         if xpath == '.':  # ET < 1.3 does not support '.' alone.
             return [source]
         return source.findall(self._get_xpath(xpath))
-
-    def _parse_xml(self, source):
-        if isinstance(source, basestring):
-            return self.parse_xml(source)
-        return source
 
     if sys.version_info >= (2, 7):
         def _get_xpath(self, xpath):
