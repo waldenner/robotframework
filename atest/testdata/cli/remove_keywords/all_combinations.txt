@@ -1,0 +1,49 @@
+*** Variables ***
+${COUNTER}         ${0}
+${PASS MESSAGE}    -PASSED -ALL
+${FAIL MESSAGE}    -ALL +PASSED
+${REMOVED FOR MESSAGE}     -FOR -ALL
+${KEPT FOR MESSAGE}        +FOR -ALL
+${REMOVED WUKS MESSAGE}    -WUKS -ALL
+${KEPT WUKS MESSAGE}       +WUKS -ALL
+
+
+*** Test Case ***
+
+Passing
+    Log    ${PASS MESSAGE}
+
+Failing
+    [Documentation]    FAIL Message
+    Log     ${FAIL MESSAGE}
+    Fail    Message
+
+For when test fails
+    [Documentation]    FAIL Cannot pass
+    My FOR
+    Fail    Cannot pass
+
+For when test passes
+    My FOR
+
+WUKS when test fails
+    [Documentation]    FAIL Cannot pass
+    Wait Until Keyword Succeeds    2s    0.01s    My WUKS
+    Fail    Cannot pass
+
+WUKS when test passes
+     Wait Until Keyword Succeeds    2s    0.01s    My WUKS
+
+*** Keywords ***
+
+My FOR
+    :FOR    ${item}    IN    one    two    three    LAST
+    \    Run Keyword If    "${item}" == "LAST"
+    \    ...    Log    ${KEPT FOR MESSAGE} ${item}
+    \    ...    ELSE
+    \    ...    Log    ${REMOVED FOR MESSAGE} ${item}
+
+My WUKS
+    Set Test Variable    $COUNTER    ${COUNTER + 1}
+    Run Keyword If    ${COUNTER} < 10    Fail    ${REMOVED WUKS MESSAGE}
+    Run Keyword If    ${COUNTER} == 10    Fail    ${KEPT WUKS MESSAGE}
