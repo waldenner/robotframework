@@ -1,0 +1,53 @@
+*** Settings ***
+Suite Setup       Run Libdoc And Parse Output    Telnet
+Force Tags        regression    pybot    jybot
+Resource          libdoc_resource.txt
+
+*** Test Cases ***
+Name
+    Name Should Be    Telnet
+
+Documentation
+    Doc Should Start With
+    ...    A test library providing communication over Telnet connections.\n\n
+    ...    `Telnet` is Robot Framework's standard library that makes it\npossible
+
+Version
+    Version Should Match    *
+
+Type
+    Type Should Be    library
+
+Generated
+    Generated Should Be Defined
+
+Scope
+    Scope Should Be    test suite
+
+Named Args
+    Named Args Should Be    yes
+
+Init Documentation
+    Init Doc Should Start With    0
+    ...    Telnet library can be imported with optional arguments.\n\n
+    ...    Initialization parameters are used as default values when new\nconnections are
+
+Init Arguments
+    Init Arguments Should Be    0    timeout=3.0    newline=CRLF    prompt=None    prompt_is_regexp=False
+
+Keyword Names
+    Keyword Name Should Be     0    Close All Connections
+    Keyword Name Should Be     1    Close Connection
+
+Keyword Arguments
+    Keyword Arguments Should Be     0
+    Keyword Arguments Should Be     1     loglevel=None
+
+Keyword Documentation
+    Keyword Doc Should Start With    0   Closes all open connections
+    Keyword Doc Should Start With    2
+    ...    Executes given command and reads and returns everything until prompt.\n\n
+    ...    This is a convenience keyword; following two are functionally\nidentical:\n\n
+    ...    | \${out} = | Execute Command \ \ | Some command |\n\n
+    ...    | Write \ \ \ | Some command \ \ \ \ \ |\n
+    ...    | \${out} = | Read Until Prompt |\n\n

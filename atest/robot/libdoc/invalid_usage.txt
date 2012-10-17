@@ -1,0 +1,60 @@
+*** Settings ***
+Force Tags       regression    pybot    jybot
+Resource         libdoc_resource.txt
+Test Template    Run libdoc and verify error
+
+
+*** Variable ***
+${USAGE TIP}    \nTry --help for usage information.\n
+
+*** Test Cases ***
+
+No arguments
+    ${EMPTY}          Expected at least 2 arguments, got 0.
+
+Too many arguments when creating output
+    MyLib out.xml extra      Only two arguments allowed when writing output.
+
+Too many arguments with version
+    Dialogs version extra    Command 'version' does not take arguments.
+
+Invalid option
+    --invalid         option --invalid not recognized
+
+Invalid format
+    -f XXX BuiltIn out.html    Format must be 'HTML' or 'XML', got 'XXX'.
+    BuiltIn out.ext            Format must be 'HTML' or 'XML', got 'EXT'.
+
+Invalid doc format
+    --docformat inv BuiltIn out.html    Doc format must be 'ROBOT', 'TEXT', 'HTML' or 'REST', got 'INV'.
+
+Invalid doc format in library
+    ${TESTDATADIR}/DocFormatInvalid.py out.html   Invalid documentation format 'INVALID'.
+
+Non-existing library
+    NonExistingLib out.html   Importing test library 'NonExistingLib' failed: *
+
+Non-existing spec
+    nonex.xml out.html    Spec file 'nonex.xml' does not exist.
+
+Invalid spec
+    [Setup]    Create File    ${OUTXML}    <wrong/>
+    ${OUTXML} out.html    Invalid spec file '${OUTXML}'.
+    [Teardown]    Remove File    ${OUTXML}
+
+Non-XML spec
+    [Setup]    Create File    ${OUTXML}    very wrong
+    ${OUTXML} out.html    Building library '${OUTXML}' failed: *
+    [Teardown]    Remove File    ${OUTXML}
+
+Invalid resource
+    ${CURDIR}/invalid_usage.txt out.html
+    ...   [ ERROR ] *: Non-existing setting 'Force Tags'.
+    ...   [ ERROR ] *: Non-existing setting 'Test Template'.
+    ...   Resource file '*' contains a test case table which is not allowed.
+
+
+*** Keywords ***
+Run libdoc and verify error
+    [Arguments]    ${args}    @{error}
+    Run libdoc and verify output    ${args}    @{error}    ${USAGE TIP}

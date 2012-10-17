@@ -1,0 +1,39 @@
+*** Settings ***
+Test Setup      Create Output Directory
+Force Tags    regression  pybot  jybot
+Resource        cli_resource.txt
+
+
+*** Test Cases ***
+
+No Input
+    Run Should Fail  ${EMPTY}  Expected at least 1 argument, got 0\\.
+
+Non-Existing Input
+    Run Should Fail  nonexisting.html  Parsing '.*[/\\\\]nonexisting.html' failed: Data source does not exist\\.
+
+Non-Existing Input With Non-Ascii Characters
+    Run Should Fail  eitäällä.txt  Parsing '.*[/\\\\]eitäällä\\.txt' failed: Data source does not exist\\.
+
+Invalid Options
+    Run Should Fail  --invalid option  option --invalid not recognized
+    Run Should Fail  --name valid -X ${TESTFILE}  option -X not recognized
+
+Invalid Option Values
+    Run Tests  --suitestatlevel not_int --tagstatlink less_than_3x_:  ${TESTFILE}
+    Stderr Should Contain Once  Option '--suitestatlevel' expected integer value but got 'not_int'. Default value used instead.\n
+    Stderr Should Contain Once  Invalid format for option '--tagstatlink'. Expected 'tag:link:title' but got 'less_than_3x_:'.\n
+    Should Be Equal  ${SUITE.status}  PASS
+
+
+*** Keywords ***
+
+Run Should Fail  [Arguments]  ${options}  ${exp error}
+    Set Runners
+    ${rc}  ${output} =  Run And Return RC and Output  ${ROBOT} ${options}
+    Should Be Equal As Integers  ${rc}  252
+    Should Match Regexp  ${output}  ^\\[ .*ERROR.* \\] ${exp error}${USAGETIP}$
+
+Stderr Should Contain Once  [Arguments]  ${msg}
+    ${stderr} =  Get Stderr
+    Should Contain X Times  ${stderr}  ${msg}  1
