@@ -1,0 +1,26 @@
+*** Settings ***
+Library  KwargsLibrary  arg2=value2  WITH NAME  NormalNamed
+Library  KwargsLibrary  ${arg}  WITH NAME  NotNamed
+Library  KwargsLibrary  arg2=${666}  WITH NAME  NonStringValue
+Library  KwargsLibrary  @{ARGS}
+
+*** Variables ***
+${ARG}   arg2=seppo
+@{ARGS}  WITH NAME  NotWorks
+
+
+*** Test Cases ***
+
+Normal Named Arguments
+    NormalNamed.Check Init Arguments  ${NONE}  value2
+
+Non String Value
+    NonStringValue.Check Init Arguments  ${NONE}  ${666}
+
+Named Argument Syntax Doesn't Work Inside Variable
+    NotNamed.Check Init Arguments  arg2=seppo  ${NONE}
+
+WITH NAME Doesn't Work Inside Variable
+    [Documentation]  FAIL  No keyword with name 'NotWorks.Check Init Arguments' found.
+    KwargsLibrary.Check Init Arguments  WITH NAME  NotWorks
+    NotWorks.Check Init Arguments  ${NONE}  ${NONE}
