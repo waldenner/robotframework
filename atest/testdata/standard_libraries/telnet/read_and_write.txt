@@ -58,17 +58,21 @@ Read Until Regexp
     Write    pwd
     ${out} =    Read Until Regexp    /h[abo]me.${USERNAME}\\s+
     Should Be Equal    ${out}    ${HOME}\r\n
-    ${out} =    Read Until Regexp    .*@    deBUG
+    ${out} =    Read Until Regexp    no match    .*@    blaah    deBUG
     Should Be Equal    ${out}    ${PROMPT START}
 
 Read Until Regexp Non-ASCII
     Write    echo Päivää
-    ${out} =    Read Until Regexp    no match    ää   debug
+    ${out} =    Read Until Regexp    ei mätsää    ää    debug
     Should Be Equal    ${out}    Päivää
 
 Read Until Regexp Fails
     [Documentation]    FAIL No match found for 'Not found' in ${TIMEOUT}
     Read Until Regexp    Not found
+
+Read Until Regexp Requires At Least One Pattern
+    [Documentation]    FAIL At least one pattern required
+    Read Until Regexp
 
 Read Until Prompt
     [Documentation]    FAIL No match found for '$$' in ${TIMEOUT}
@@ -101,3 +105,13 @@ Write Until Expected Output
 Execute Command
     ${output} =    Execute Command    pwd
     Should Be Equal    ${output}    ${HOME}\r\n${FULL PROMPT}
+
+Writing and reading fails if there is no connection
+    [Setup]    NONE
+    [Template]    Should fail because no connection
+    Write    foo
+    Write Bare    bar
+    Write Until Expected Output    foo    bar    1s    0.1s
+    Read
+    Read Until    foo
+    Read Until Regexp    bar
