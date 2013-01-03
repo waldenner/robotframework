@@ -1,0 +1,12 @@
+*** Settings ***
+Suite Setup     Raise Unicode Error
+Suite Teardown  Raise Unicode Error
+Library         UnicodeLibrary
+
+*** Test Cases ***
+Unicode Failure In Suite Setup and Teardown
+    [Documentation]  FAIL  Setup of the parent suite failed:
+    ...    Circle is 360°, Hyvää üötä, উৄ ৰ ৺ ট ৫ ৪ হ
+    ...
+    ...    Also teardown of the parent suite failed.
+
