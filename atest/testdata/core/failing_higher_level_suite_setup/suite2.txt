@@ -1,0 +1,5 @@
+*** Test cases ***
+Test 2
+    [Documentation]  FAIL Setup of the parent suite failed:
+    ...    Expected failure in higher level setup
+    No operation
