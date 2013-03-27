@@ -1,0 +1,48 @@
+*** Settings ***
+Suite Setup     Run tests  ${EMPTY}  variables/variable_table.txt
+Force Tags      pybot  jybot  regression
+Resource        atest_resource.txt
+
+*** Test Cases ***
+Scalar String
+    Check Test Case    ${TEST NAME}
+
+Scalar Non-Strings
+    Check Test Case    ${TEST NAME}
+
+Scalar String With Escapes
+    Check Test Case    ${TEST NAME}
+
+Empty Scalar String
+    Check Test Case    ${TEST NAME}
+
+List With One Item
+    Check Test Case    ${TEST NAME}
+
+List With Multiple Items
+    Check Test Case    ${TEST NAME}
+
+List With Escapes
+    Check Test Case    ${TEST NAME}
+
+List Created From List With Escapes
+    Check Test Case    ${TEST NAME}
+
+List With No Items
+    Check Test Case    ${TEST NAME}
+
+Variable Names Are Case Insensitive
+    Check Test Case    ${TEST NAME}
+
+Variable Names Are Space Insensitive
+    Check Test Case    ${TEST NAME}
+
+Variable Names Are Underscore Insensitive
+    Check Test Case    ${TEST NAME}
+
+Assign Mark With Scalar Variable
+    Check Test Case    ${TEST NAME}
+
+Assign Mark With List Variable
+    Check Test Case    ${TEST NAME}
+
