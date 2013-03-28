@@ -1,0 +1,8 @@
+*** Settings ***
+Suite Setup  Fail  Not Executed
+
+*** Test cases ***
+Test 1
+    [Documentation]  FAIL Setup of the parent suite failed:
+    ...    Expected failure in higher level setup
+    No operation
