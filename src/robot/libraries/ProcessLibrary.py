@@ -23,6 +23,7 @@ class ProcessData(object):
         self.stderr = stderr
 
 class ProcessLibrary(object):
+    ROBOT_LIBRARY_SCOPE='GLOBAL'
 
     def __init__(self):
         self._started_processes = ConnectionCache()
@@ -38,24 +39,13 @@ class ProcessLibrary(object):
         config = _NewProcessConfig(conf, self._tempdir)
         stdout_stream = config.stdout_stream
         stderr_stream = config.stderr_stream
-        print "stdout tempfile is", stdout_stream.name
-        print "stderr tempfile is", stderr_stream.name
         pd = ProcessData(stdout_stream.name, stderr_stream.name)
         use_shell = config.use_shell
-        if 'cwd' in conf:
-            cwd = conf['cwd']
-        else:
-            cwd = '.'
         if use_shell and args:
             cmd = subprocess.list2cmdline(cmd)
-            print cmd
         p = subprocess.Popen(cmd, stdout=stdout_stream, stderr=stderr_stream,
-                             shell=use_shell, cwd=cwd)
-        if 'alias' in conf:
-            alias = conf['alias']
-        else:
-            alias = None
-        index = self._started_processes.register(p, alias=alias)
+                             shell=use_shell, cwd=config.cwd)
+        index = self._started_processes.register(p, alias=config.alias)
         self._logs[index] = pd
         return index
 
@@ -77,11 +67,7 @@ class ProcessLibrary(object):
             self._started_processes.switch(handle)
         exit_code = self._started_processes.current.wait()
         logs = self._logs[handle]
-        with open(logs.stdout,'r') as f:
-            stdout = f.read()
-        with open(logs.stderr,'r') as f:
-            stderr = f.read()
-        return ExecutionResult(stdout, stderr, exit_code)
+        return ExecutionResult(logs.stdout, logs.stderr, exit_code)
 
     def kill_process(self, handle=None):
         if handle:
@@ -95,9 +81,10 @@ class ProcessLibrary(object):
 
     def kill_all_processes(self):
         for handle in range(len(self._started_processes._connections)):
-            self.kill_process(handle)
+            if self.process_is_alive(handle):
+                self.kill_process(handle)
 
-    def get_pid(self, handle): #get process id
+    def get_process_id(self, handle):
         self._started_processes.switch(handle)
         return self._started_processes.current.pid
 
@@ -113,11 +100,26 @@ class ProcessLibrary(object):
 
 class ExecutionResult(object):
 
-    def __init__(self, stdout=None, stderr=None, exit_code=None):
-        self.stdout = stdout or ''
-        self.stderr = stderr or ''
+    _stdout = _stderr = None
+
+    def __init__(self, stdout_name, stderr_name, exit_code=None):
+        self._stdout_name = stdout_name
+        self._stderr_name = stderr_name
         self.exit_code = exit_code
 
+    @property
+    def stdout(self):
+        if self._stdout is None:
+            with open(self._stdout_name,'r') as f:
+                self._stdout = f.read()
+        return self._stdout
+
+    @property
+    def stderr(self):
+        if self._stderr is None:
+            with open(self._stderr_name,'r') as f:
+                self._stderr = f.read()
+        return self._stderr
 
 if __name__ == '__main__':
     r = ProcessLibrary().run_process('python', '-c', "print \'hello\'")
@@ -130,7 +132,9 @@ class _NewProcessConfig(object):
         self._conf = conf
         self.stdout_stream = open(conf['stdout'], 'w') if 'stdout' in conf else self._get_temp_file("stdout")
         self.stderr_stream = open(conf['stderr'], 'w') if 'stderr' in conf else self._get_temp_file("stderr")
-        self.use_shell = (conf['shell'] != 'False') if 'shell' in conf else False
+        self.use_shell = (conf.get('shell', 'False') != 'False')
+        self.cwd = conf.get('cwd', None)
+        self.alias = conf.get('alias', None)
 
 
     def _get_temp_file(self, suffix):
