@@ -1,5 +1,6 @@
 *** Settings ***
-Library     helper.py
+Library    DynamicLibrary.py
+Library    helper.py
 
 *** Test Cases ***
 Simple Kwarg
@@ -61,11 +62,11 @@ Naming without the varargs works
     Should be equal   @{ret}[1]    bar
 
 Varargs with naming does not work
-    [documentation]  FAIL  Error in keyword 'Named arguments with varargs'. Named arguments can not be given before positional arguments. Please remove prefix b= or escape b=bar as b\\=bar.
+    [documentation]  FAIL  Error in keyword 'DynamicLibrary.Named Arguments With Varargs'. Named arguments can not be given before positional arguments. Please remove prefix b= or escape b=bar as b\\=bar.
     @{ret} =    Named arguments with varargs   foo    b=bar    dar
 
 Varargs with naming does not work with empty lists either
-    [documentation]  FAIL  Error in keyword 'Named arguments with varargs'. Named arguments can not be given before positional arguments. Please remove prefix b= or escape b=bar as b\\=bar.
+    [documentation]  FAIL  Error in keyword 'DynamicLibrary.Named Arguments With Varargs'. Named arguments can not be given before positional arguments. Please remove prefix b= or escape b=bar as b\\=bar.
     @{ret} =    Named arguments with varargs   foo    b=bar    @{EMPTY}
 
 Named combinations with varargs
@@ -82,15 +83,14 @@ Named combinations with varargs
 
 Non working named combinations with varargs
     [template]           Execute illegal named vararg combination
-    Error in keyword 'Mandatory, Named and varargs'. Named arguments can not be given before positional arguments.   a=a  b
-    Keyword 'Mandatory, Named and varargs' missing value for argument                                      b=b
-    Error in keyword 'Mandatory, Named and varargs'. Named arguments can not be given before positional arguments.   b=b  b
-    Error in keyword 'Mandatory, Named and varargs'. Named arguments can not be given before positional arguments.   a    b=b   c
-    Error in keyword 'Mandatory, Named and varargs'. Named arguments can not be given before positional arguments.   a    b=b   c=c
-    Error in keyword 'Mandatory, Named and varargs'. Value for argument '\${a}' was given twice.                     a    b     a=a
-    Error in keyword 'Mandatory, Named and varargs'. Value for argument '\${b}' was given twice.                     a    b     b=b
-    Error in keyword 'Mandatory, Named and varargs'. Value for argument '\${a}' was given twice.                     a    a=a
-    Error in keyword 'Mandatory, Named and varargs'. Value for argument '\${a}' was given twice.                     a    b     c    a=a
+    Error in keyword 'DynamicLibrary.Mandatory, Named And Varargs'. Named arguments can not be given before positional arguments.   a=a  b
+    Keyword 'DynamicLibrary.Mandatory, Named And Varargs' missing value for argument                                      b=b
+    Error in keyword 'DynamicLibrary.Mandatory, Named And Varargs'. Named arguments can not be given before positional arguments.   b=b  b
+    Error in keyword 'DynamicLibrary.Mandatory, Named And Varargs'. Named arguments can not be given before positional arguments.   a    b=b   c
+    Error in keyword 'DynamicLibrary.Mandatory, Named And Varargs'. Value for argument 'a' was given twice.                     a    b     a=a
+    Error in keyword 'DynamicLibrary.Mandatory, Named And Varargs'. Value for argument 'b' was given twice.                     a    b     b=b
+    Error in keyword 'DynamicLibrary.Mandatory, Named And Varargs'. Value for argument 'a' was given twice.                     a    a=a
+    Error in keyword 'DynamicLibrary.Mandatory, Named And Varargs'. Value for argument 'a' was given twice.                     a    b     c    a=a
 
 Named combinations without varargs
     [template]           Execute working named combination with result
@@ -103,63 +103,29 @@ Named combinations without varargs
 
 Non working named combinations without varargs
     [template]           Execute illegal named combination
-    Error in keyword 'Mandatory and Named'. Named arguments can not be given before positional arguments        a=a   b
-    Keyword 'Mandatory and Named' missing value for argument                                          b=b
-    Error in keyword 'Mandatory and Named'. Named arguments can not be given before positional arguments.       b=b  b
-    Error in keyword 'Mandatory and Named'. Value for argument '\${a}' was given twice.                         a    a=a
+    Error in keyword 'DynamicLibrary.Mandatory And Named'. Named arguments can not be given before positional arguments        a=a   b
+    Keyword 'DynamicLibrary.Mandatory And Named' missing value for argument                                          b=b
+    Error in keyword 'DynamicLibrary.Mandatory And Named'. Named arguments can not be given before positional arguments.       b=b  b
+    Error in keyword 'DynamicLibrary.Mandatory And Named'. Value for argument 'a' was given twice.                         a    a=a
 
 
 *** Keywords ***
 Execute working named vararg combination with result
     [arguments]    ${expected}  @{args}
-    ${res} =       Get result or error    Mandatory, Named and varargs   @{args}
+    ${res} =       Get result or error    Mandatory, Named And Varargs   @{args}
     Should be equal     ${expected}   ${res}
 
 Execute illegal named vararg combination
     [arguments]    ${expected error}   @{args}
-    ${res} =       Get result or error    Mandatory, Named and varargs   @{args}
+    ${res} =       Get result or error    Mandatory, Named And Varargs   @{args}
     Should start with     ${res}     ${expected error}
 
 Execute working named combination with result
     [arguments]    ${expected}  @{args}
-    ${res} =       Get result or error    Mandatory and Named   @{args}
+    ${res} =       Get result or error    Mandatory And Named   @{args}
     Should be equal     ${expected}   ${res}
 
 Execute illegal named combination
     [arguments]     ${expected error}     @{args}
-    ${res} =       Get result or error    Mandatory and Named   @{args}
+    ${res} =       Get result or error    Mandatory And Named   @{args}
     Should start with     ${res}     ${expected error}
-
-Mandatory, Named and varargs
-    [arguments]    ${a}   ${b}=default   @{varargs}
-    ${res}=    pretty    ${a}    ${b}    @{varargs}
-    [return]   ${res}
-
-Mandatory and Named
-    [arguments]    ${a}   ${b}=default
-    ${res}=    pretty    ${a}    ${b}
-    [return]   ${res}
-
-One Kwarg
-    [arguments]  ${kwarg}=
-    [return]  ${kwarg}
-
-Two Kwargs
-    [arguments]  ${first}=  ${second}=
-    [return]  ${first}, ${second}
-
-Four Kw Args
-    [arguments]  ${a}=default  ${b}=default  ${c}=default  ${d}=default
-    [return]  ${a}, ${b}, ${c}, ${d}
-
-Mandatory And Kwargs
-    [arguments]  ${man1}  ${man2}  ${kwarg}=KWARG VALUE
-    [return]  ${man1}, ${man2}, ${kwarg}
-
-Escaped default value
-    [arguments]  ${d1}=\${notvariable}  ${d2}=\\\\  ${d3}=\n  ${d4}=\t
-    [return]  ${d1} ${d2} ${d3} ${d4}
-
-Named arguments with varargs
-    [arguments]  ${a}=default  ${b}=default   @{varargs}
-    [return]     ${a}     ${b}    @{varargs}
