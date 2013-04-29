@@ -25,7 +25,7 @@ from .keywords import Keywords
 from .fixture import Teardown
 from .timeouts import KeywordTimeout
 from .arguments import (ArgumentValidator, UserKeywordArgumentParser,
-                        UserKeywordArgumentResolver, ArgumentMapper)
+                        ArgumentResolver, ArgumentMapper)
 
 
 class UserLibrary(BaseLibrary):
@@ -148,7 +148,7 @@ class UserKeywordHandler(object):
             raise error
 
     def _resolve_dry_run_args(self, argspec, arguments):
-        ArgumentValidator(argspec).check_arg_limits_for_dry_run(arguments)
+        ArgumentValidator(argspec).validate_limits(arguments, dry_run=True)
         required_args = argspec.minargs + len(argspec.defaults)
         missing_args = required_args - len(arguments)
         return arguments + [None] * missing_args
@@ -165,7 +165,7 @@ class UserKeywordHandler(object):
         return return_value
 
     def _resolve_arguments(self, argspec, arguments, variables):
-        resolver = UserKeywordArgumentResolver(argspec)
+        resolver = ArgumentResolver(argspec)
         mapper = ArgumentMapper(argspec)
         positional, named = resolver.resolve(arguments, variables)
         return mapper.map(positional, named, variables)
@@ -188,9 +188,9 @@ class UserKeywordHandler(object):
     def _set_variables(self, argspec, arguments, variables):
         before_varargs, varargs = self._split_args_and_varargs(argspec, arguments)
         for name, value in zip(argspec.positional, before_varargs):
-            variables[name] = value
+            variables['${%s}' % name] = value
         if argspec.varargs:
-            variables[argspec.varargs] = varargs
+            variables['@{%s}' % argspec.varargs] = varargs
 
     def _split_args_and_varargs(self, argspec, args):
         if not argspec.varargs:
