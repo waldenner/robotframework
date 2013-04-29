@@ -354,12 +354,35 @@ class _Verify:
         |      | Run Keyword If | '${var}' == 'EXIT' | Exit For Loop |
         |      | Do Something   | ${var} |
 
+        Starting from Robot Framework 2.8 it is also possible to use
+        `Exit For Loop If`.
+
         New in Robot Framework 2.5.2.
         """
         # Error message is shown only if there is no enclosing for loop
         error = AssertionError('Exit for loop without enclosing for loop.')
         error.ROBOT_EXIT_FOR_LOOP = True
         raise error
+
+    def exit_for_loop_if(self, condition):
+        """Immediately stops executing the enclosing for loop if given
+        condition is true.
+
+        This keyword can be used directly in a for loop or in a keyword that
+        the for loop uses. In both cases the test execution continues after
+        the for loop. If executed outside of a for loop, the test fails.
+
+        To unconditionally exit for loop, see `Exit For Loop`.
+
+        Example:
+        | :FOR | ${var} | IN | @{SOME LIST} |
+        |      | Exit For Loop If | '${var}' == 'EXIT' |
+        |      | Do Something   | ${var} |
+
+        New in Robot Framework 2.8.
+        """
+        if self._is_true(condition):
+            self.exit_for_loop()
 
     def should_not_be_true(self, condition, msg=None):
         """Fails if the given condition is true.
@@ -1136,7 +1159,7 @@ class _RunKeyword:
 
     def _split_run_keywords(self, keywords):
         if 'AND' not in keywords:
-            for name in self._variables.replace_run_kw_info(keywords):
+            for name in self._variables.replace_list(keywords):
                 yield name, ()
         else:
             for name, args in self._split_run_keywords_from_and(keywords):
@@ -1150,7 +1173,7 @@ class _RunKeyword:
         yield self._resolve_run_keywords_name_and_args(keywords)
 
     def _resolve_run_keywords_name_and_args(self, kw_call):
-        kw_call = self._variables.replace_run_kw_info(kw_call, needed=1)
+        kw_call = self._variables.replace_list(kw_call, replace_until=1)
         if not kw_call:
             raise DataError('Incorrect use of AND')
         return kw_call[0], kw_call[1:]
@@ -1216,7 +1239,7 @@ class _RunKeyword:
     def _split_branch(self, args, control_word, required, required_error):
         args = list(args)
         index = args.index(control_word)
-        branch = self._variables.replace_run_kw_info(args[index+1:], required)
+        branch = self._variables.replace_list(args[index+1:], required)
         if len(branch) < required:
             raise DataError('%s requires %s.' % (control_word, required_error))
         return args[:index], branch
