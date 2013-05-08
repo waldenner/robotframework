@@ -1,0 +1,20 @@
+*** Test Case ***
+FTD PTD Passing
+    [Documentation]    FAIL
+    ...    Teardown of the parent suite failed:
+    ...    Failure in sub suite teardown
+    ...
+    ...    Also teardown of the parent suite failed:
+    ...    Failure in top level suite teardown
+    No Operation
+
+FTD PTD Failing
+    [Documentation]    FAIL
+    ...    Failure here
+    ...
+    ...    Also teardown of the parent suite failed:
+    ...    Failure in sub suite teardown
+    ...
+    ...    Also teardown of the parent suite failed:
+    ...    Failure in top level suite teardown
+    Fail    Failure here
