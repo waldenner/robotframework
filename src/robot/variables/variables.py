@@ -67,27 +67,34 @@ class Variables(utils.NormalizedDict):
 
     def __getitem__(self, name):
         self._validate_var_name(name)
-        try: return self._solve_delayed(name, utils.NormalizedDict.__getitem__(self, name))
+        try:
+            return self._find_variable(name)
         except KeyError:
-            try: return self._get_number_var(name)
+            try:
+                return self._get_number_var(name)
             except ValueError:
-                try: return self._get_list_var_as_scalar(name)
+                try:
+                    return self._get_list_var_as_scalar(name)
                 except ValueError:
-                    try: return self._get_scalar_as_list_var(name)
+                    try:
+                        return self._get_scalar_var_as_list(name)
                     except ValueError:
-                        try: return self._get_extended_var(name)
+                        try:
+                            return self._get_extended_var(name)
                         except ValueError:
                             raise DataError("Non-existing variable '%s'." % name)
 
+    def _find_variable(self, name):
+        variable = utils.NormalizedDict.__getitem__(self, name)
+        return self._solve_delayed(name, variable)
+
     def _solve_delayed(self, name, value):
-        if value is not None:
-            if hasattr(value, 'delayed_var_value'):
-                v = value()
-                self[name] = v
-                return v
+        if isinstance(value, DelayedVariable):
+            value = value.resolve(name, self)
+            self[name] = value
         return value
 
-    def force_value_resolve(self):
+    def resolve_delayed(self):
         self.values()
 
     def _validate_var_name(self, name):
@@ -99,24 +106,31 @@ class Variables(utils.NormalizedDict):
             self._validate_var_name(name)
 
     def _get_list_var_as_scalar(self, name):
-        if is_scalar_var(name):
-            try:
-                return self['@'+name[1:]]
-            except DataError:
-                pass
-        raise ValueError
+        if not is_scalar_var(name):
+            raise ValueError
+        name = '@'+name[1:]
+        try:
+            return self._find_variable(name)
+        except KeyError:
+            return self._get_extended_var(name)
 
-    def _get_scalar_as_list_var(self, name):
-        if is_list_var(name):
-            try:
-                value = utils.NormalizedDict.__getitem__(self, '$'+name[1:])
-                iter(value)
-                if isinstance(value, basestring):
-                    raise ValueError
-                return value
-            except (KeyError, TypeError):
-                pass
-        raise ValueError
+    def _get_scalar_var_as_list(self, name):
+        if not is_list_var(name):
+            raise ValueError
+        name = '$'+name[1:]
+        try:
+            value = self._find_variable(name)
+        except KeyError:
+            value = self._get_extended_var(name)
+        try:
+            if isinstance(value, basestring):
+                raise TypeError
+            iter(value)
+        except TypeError:
+            raise DataError("Using scalar variable '%s' as list variable '@%s' "
+                            "requires its value to be list or list-like."
+                            % (name, name[1:]))
+        return value
 
     def _get_extended_var(self, name):
         err_pre = "Resolving variable '%s' failed: " % name
@@ -219,38 +233,38 @@ class Variables(utils.NormalizedDict):
         return self.replace_string(item, var)
 
     def _cannot_have_variables(self, item):
-        return (not isinstance(item, basestring)) or '{' not in item
+        return not (isinstance(item, basestring) and '{' in item)
 
-    def replace_string(self, string, splitted=None, ignore_errors=False):
+    def replace_string(self, string, splitter=None, ignore_errors=False):
         """Replaces variables from a string. Result is always a string."""
         if self._cannot_have_variables(string):
             return utils.unescape(string)
         result = []
-        if splitted is None:
-            splitted = VariableSplitter(string, self._identifiers)
+        if splitter is None:
+            splitter = VariableSplitter(string, self._identifiers)
         while True:
-            if splitted.identifier is None:
+            if splitter.identifier is None:
                 result.append(utils.unescape(string))
                 break
-            result.append(utils.unescape(string[:splitted.start]))
+            result.append(utils.unescape(string[:splitter.start]))
             try:
-                value = self._get_variable(splitted)
+                value = self._get_variable(splitter)
             except DataError:
                 if not ignore_errors:
                     raise
-                value = string[splitted.start:splitted.end]
+                value = string[splitter.start:splitter.end]
             if not isinstance(value, unicode):
                 value = utils.unic(value)
             result.append(value)
-            string = string[splitted.end:]
-            splitted = VariableSplitter(string, self._identifiers)
+            string = string[splitter.end:]
+            splitter = VariableSplitter(string, self._identifiers)
         result = ''.join(result)
         return result
 
     def _get_variable(self, var):
         """'var' is an instance of a VariableSplitter"""
         # 1) Handle reserved syntax
-        if var.identifier not in ['$','@','%']:
+        if var.identifier not in '$@%':
             value = '%s{%s}' % (var.identifier, var.base)
             LOGGER.warn("Syntax '%s' is reserved for future use. Please "
                         "escape it like '\\%s'." % (value, value))
@@ -289,7 +303,7 @@ class Variables(utils.NormalizedDict):
         var_file = self._import_variable_file(path)
         try:
             variables = self._get_variables_from_var_file(var_file, args)
-            self._set_from_file(variables, overwrite, path)
+            self._set_from_file(variables, overwrite)
         except:
             amsg = 'with arguments %s ' % utils.seq2str2(args) if args else ''
             raise DataError("Processing variable file '%s' %sfailed: %s"
@@ -298,7 +312,7 @@ class Variables(utils.NormalizedDict):
 
     # This can be used with variables got from set_from_file directly to
     # prevent importing same file multiple times
-    def _set_from_file(self, variables, overwrite, path):
+    def _set_from_file(self, variables, overwrite=False):
         list_prefix = 'LIST__'
         for name, value in variables:
             if name.startswith(list_prefix):
@@ -332,15 +346,7 @@ class Variables(utils.NormalizedDict):
         self._validate_var_name(name)
         self._validate_var_is_not_scalar_list(name, value)
         value = [self._unescape_leading_trailing_spaces(cell) for cell in value]
-        return name, self._delayed_var_value(name, value)
-
-    def _delayed_var_value(self, name, value):
-        def _delayed():
-            if is_list_var(name):
-                return self.replace_list(value)
-            return self.replace_scalar(value[0])
-        _delayed.delayed_var_value = True
-        return _delayed
+        return name, DelayedVariable(value)
 
     def _unescape_leading_trailing_spaces(self, item):
         if item.endswith(' \\'):
@@ -403,3 +409,14 @@ class Variables(utils.NormalizedDict):
         if extended:
             return self.has_key(variable)
         return utils.NormalizedDict.has_key(self, variable)
+
+
+class DelayedVariable(object):
+
+    def __init__(self, value):
+        self._value = value
+
+    def resolve(self, name, variables):
+        if is_list_var(name):
+            return variables.replace_list(self._value)
+        return variables.replace_scalar(self._value[0])
