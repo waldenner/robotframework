@@ -335,10 +335,14 @@ class Process(object):
         if not hasattr(process,'kill'):
             self._terminate_process(process)
             return
-        if kill:
-            process.kill()
-        else:
-            process.terminate()
+        try:
+            if kill:
+                process.kill()
+            else:
+                process.terminate()
+        except OSError:
+            if process.poll() is None:
+                raise
 
     def _terminate_process(self, theprocess):
         if sys.platform == 'win32':
@@ -485,7 +489,9 @@ class ProcessConfig(object):
             if key == "env":
                 self.env = dict()
                 for k,v in val.iteritems():
-                    self.env[k.encode('utf-8')] = v.encode('utf-8')
+                    k = k.encode('utf-8')
+                    v = v.encode('utf-8')
+                    self.env[k] = v
             elif "env:" == key[:4]:
                 new_env[key[4:]] = val.encode('utf-8')
             else:
