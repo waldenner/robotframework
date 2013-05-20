@@ -191,7 +191,7 @@ class Process(object):
     | | ${result1}=  | `Wait For Process` | ${handle1} |
     | | `Terminate Process` | ${handle2} |
     | | `Process Should Be Dead` | ${handle2} |
-    | | [Teardown] | `Kill All Processes` |
+    | | [Teardown] | `Terminate All Processes` | kill=True |
     """
 
     ROBOT_LIBRARY_SCOPE='GLOBAL'
@@ -230,6 +230,14 @@ class Process(object):
         [http://docs.python.org/2.7/library/subprocess.html|subprocess] module's
         [http://docs.python.org/2.7/library/subprocess.html#subprocess.Popen|Popen]
         class (see `Configurations`).
+
+        Configuration can contain the following options for the process:
+        stdout - A file path to use for standard output from the process
+        stderr - A file path to use for standard error from the process
+        shell  - True value will execute the process in a shell
+        cwd - Current working directory for the process
+        env and env:VARNAME=VALUE - dictionary for the environment variables to
+        use
 
         Returns process index on success.
 
