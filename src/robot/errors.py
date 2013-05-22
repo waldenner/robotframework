@@ -94,10 +94,6 @@ class ExecutionFailed(RobotError):
         self.return_value = return_value
 
     @property
-    def execution_should_be_passed(self):
-        return False
-
-    @property
     def dont_continue(self):
         return self.timeout or self.syntax or self.exit
 
@@ -198,17 +194,13 @@ class UserKeywordExecutionFailed(ExecutionFailures):
         return '%s\n\nAlso keyword teardown failed:\n%s' % (run_msg, td_msg)
 
 
-class _ExecutionPassed(ExecutionFailed):
+class ExecutionPassed(ExecutionFailed):
 
     def __init__(self, message, *args, **kwargs):
         ExecutionFailed.__init__(self,
                                  message if message else 'Execution Passed called',
                                  *args, **kwargs)
         self._earlier_failures = []
-
-    @property
-    def execution_should_be_passed(self):
-        return True
 
     def set_earlier_failures(self, failures):
         if failures:
@@ -221,32 +213,30 @@ class _ExecutionPassed(ExecutionFailed):
         return ExecutionFailures(self._earlier_failures)
 
 
-class ReturnFromKeyword(_ExecutionPassed):
-
-    def __init__(self, return_value):
-        _ExecutionPassed.__init__(self,
-                                 'Return from keyword without enclosing keyword',
-                                 return_value=return_value)
-
-
-class ContinueForLoop(_ExecutionPassed):
+class ContinueForLoop(ExecutionPassed):
 
     def __init__(self):
-        _ExecutionPassed.__init__(self,
-                                 'Continue for loop without enclosing for loop.')
+        ExecutionPassed.__init__(self,
+                                  'Continue for loop without enclosing for loop.')
 
-class ExecutionPassed(_ExecutionPassed):
+
+class PassExecution(ExecutionPassed):
     pass
 
-class ExitForLoop(ExecutionFailed):
+
+class ExitForLoop(ExecutionPassed):
 
     def __init__(self):
-        ExecutionFailed.__init__(self, 'Exit for loop without ' \
-            'enclosing for loop.')
+        ExecutionPassed.__init__(self,
+                                  'Exit for loop without enclosing for loop.')
 
-    @property
-    def execution_should_be_passed(self):
-        return True
+
+class ReturnFromKeyword(ExecutionPassed):
+
+    def __init__(self, return_value):
+        ExecutionPassed.__init__(self,
+                                 'Return from keyword without enclosing keyword',
+                                 return_value=return_value)
 
 
 class RemoteError(RobotError):
