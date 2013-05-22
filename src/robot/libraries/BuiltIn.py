@@ -18,7 +18,8 @@ import time
 
 from robot.output import LOGGER, Message
 from robot.errors import (ContinueForLoop, DataError, ExecutionFailed,
-                          ExecutionFailures, ExitForLoop, ReturnFromKeyword)
+                          ExecutionFailures, ExecutionPassed, ExitForLoop,
+                          ReturnFromKeyword)
 from robot import utils
 from robot.utils import asserts
 from robot.variables import is_var, is_list_var
@@ -309,6 +310,14 @@ class _Converter:
 
 class _Verify:
 
+    def _set_and_remove_tags(self, tags):
+        set_tags = [tag for tag in tags if not tag.startswith('-')]
+        remove_tags = [tag[1:] for tag in tags if tag.startswith('-')]
+        if remove_tags:
+            self.remove_tags(*remove_tags)
+        if set_tags:
+            self.set_tags(*set_tags)
+
     def fail(self, msg=None, *tags):
         """Fails the test with the given message and optionally alters its tags.
 
@@ -335,12 +344,7 @@ class _Verify:
         Support for modifying tags was added in Robot Framework 2.7.4 and
         HTML message support in 2.8.
         """
-        set_tags = [tag for tag in tags if not tag.startswith('-')]
-        remove_tags = [tag[1:] for tag in tags if tag.startswith('-')]
-        if remove_tags:
-            self.remove_tags(*remove_tags)
-        if set_tags:
-            self.set_tags(*set_tags)
+        self._set_and_remove_tags(tags)
         raise AssertionError(msg) if msg else AssertionError()
 
     def fatal_error(self, msg=None):
@@ -807,6 +811,13 @@ class _Verify:
             msg = '%s: %s' % (msg, default)
         return msg
 
+    def pass_execution(self, message=None, *tags):
+        self._set_and_remove_tags(tags)
+        if message:
+            log_message, level = self._get_logged_message_and_level(message)
+            log_message = 'Pass Execution with message: %s' % log_message
+            self.log(log_message, level)
+        raise ExecutionPassed(message)
 
 class _Variables:
 
@@ -2282,6 +2293,7 @@ class _Misc:
                                         utils.seq2str(tags)))
 
     def _set_or_remove_tags(self, handler, suite=None, test=None):
+
         if not (suite or test):
             ns = self._namespace
             if ns.test is None:
