@@ -14,9 +14,10 @@
 
 from robot.utils import (format_assign_message, get_elapsed_time,
                          get_error_message, get_timestamp, plural_or_not)
-from robot.errors import (ContinueForLoop, DataError, ExecutionFailed,
-                          ExecutionFailures, HandlerExecutionFailed,
-                          ReturnFromKeyword, ExitForLoop)
+from robot.errors import (ContinueForLoop, DataError, _ExecutionPassed,
+                          ExecutionFailed, ExecutionFailures, ExitForLoop,
+                          HandlerExecutionFailed, ReturnFromKeyword)
+
 from robot.common import BaseKeyword
 from robot.variables import is_scalar_var, VariableAssigner
 
@@ -48,13 +49,11 @@ class Keywords(object):
         for kw in self._keywords:
             try:
                 kw.run(context)
-            except ReturnFromKeyword, ret:
-                ret.set_earlier_failures(errors)
-                raise ret
-            except ExitForLoop, exit:
-                raise exit
-            except ContinueForLoop, cont:
-                raise cont
+            except (ContinueForLoop, ExitForLoop):
+                raise
+            except (_ExecutionPassed), exp:
+                exp.set_earlier_failures(errors)
+                raise exp
             except ExecutionFailed, err:
                 errors.extend(err.get_errors())
                 if not err.can_continue(context.teardown, self._templated,
@@ -213,13 +212,13 @@ class ForLoop(BaseKeyword):
             values = items[i:i+len(self.vars)]
             err = self._run_one_round(context, self.vars, values)
             if err:
-                if isinstance(err, ReturnFromKeyword):
-                    err.set_earlier_failures(errors)
-                    raise err
                 if isinstance(err, ExitForLoop):
                     break
                 if isinstance(err, ContinueForLoop):
                     continue
+                if isinstance(err, _ExecutionPassed):
+                    err.set_earlier_failures(errors)
+                    raise err
                 errors.extend(err.get_errors())
                 if not err.can_continue(context.teardown, self._templated,
                                         context.dry_run):
