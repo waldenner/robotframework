@@ -12,11 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os.path
+
 from robot import model
-from robot.output import Output
-from robot.conf import RobotSettings
+from robot.output import LOGGER
 from robot.utils import setter
-from robot.variables import Variables
 
 from .randomizer import Randomizer
 from .runner import Runner
@@ -82,7 +82,7 @@ class TestSuite(model.TestSuite):
 
     @setter
     def imports(self, imports):
-        return model.ItemList(Import, items=imports)
+        return model.ItemList(Import, {'source': self.source}, items=imports)
 
     @setter
     def user_keywords(self, keywords):
@@ -133,13 +133,13 @@ class Variable(object):
 
 class UserKeyword(object):
 
-    def __init__(self, name, args=(), doc='', return_=None):
+    def __init__(self, name, args=(), doc='', return_=None, timeout=None):
         self.name = name
         self.args = args
         self.doc = doc
         self.return_ = return_ or ()
         self.teardown = None
-        self.timeout = Timeout()
+        self.timeout = timeout
         self.keywords = []
 
     @setter
@@ -152,22 +152,21 @@ class UserKeyword(object):
         return self.keywords
 
 
-class Timeout(object):
-    value = None
-    message = ''
-
-
 class Import(object):
 
     # TODO: Should type be verified?
     # TODO: Should we have separate methods for adding libs, resources, vars?
-    def __init__(self, type, name, args=(), alias=None):
+    def __init__(self, type, name, args=(), alias=None, source=None):
         self.type = type
         self.name = name
         self.args = args
         self.alias = alias
-        self.directory = None
+        self.source = source
+
+    @property
+    def directory(self):
+        return os.path.dirname(self.source) if self.source else None
 
     # TODO: Error reporting doesn't belong here
-    def report_invalid_syntax(self, *args):
-        pass
+    def report_invalid_syntax(self, message, level='ERROR'):
+        LOGGER.write(message, level)
