@@ -14,7 +14,6 @@
 
 import utils
 
-
 # Return codes from Robot and Rebot.
 # RC below 250 is the number of failed critical tests and exactly 250
 # means that number or more such failures.
@@ -127,22 +126,24 @@ class HandlerExecutionFailed(ExecutionFailed):
         details = utils.ErrorDetails()
         timeout = isinstance(details.error, TimeoutError)
         syntax = isinstance(details.error, DataError)
-        exit = self._get(details.error, 'EXIT_ON_FAILURE')
+        exit_on_failure = self._get(details.error, 'EXIT_ON_FAILURE')
         continue_on_failure = self._get(details.error, 'CONTINUE_ON_FAILURE')
-
-        if self._get(details.error, 'EXIT_FOR_LOOP'):
-            from robot.output import LOGGER
-            LOGGER.warn('Using ROBOT_EXIT_FOR_LOOP is deprecated in 2.8.')
-            raise ExitForLoop
-
         ExecutionFailed.__init__(self, details.message, timeout, syntax,
-                                 exit, continue_on_failure)
-
+                                 exit_on_failure, continue_on_failure)
         self.full_message = details.message
         self.traceback = details.traceback
+        self._handle_deprecated_exit_for_loop(details.error)
 
     def _get(self, error, attr):
         return bool(getattr(error, 'ROBOT_' + attr, False))
+
+    def _handle_deprecated_exit_for_loop(self, error):
+        if self._get(error, 'EXIT_FOR_LOOP'):
+            from robot.output import LOGGER
+            LOGGER.warn("Support for using 'ROBOT_EXIT_FOR_LOOP' attribute to "
+                        "exit for loops is deprecated in Robot Framework 2.8 "
+                        "and will be removed in 2.9.")
+            raise ExitForLoop
 
 
 class ExecutionFailures(ExecutionFailed):
@@ -195,12 +196,18 @@ class UserKeywordExecutionFailed(ExecutionFailures):
 
 
 class ExecutionPassed(ExecutionFailed):
+    """Base class for all exceptions communicating that execution passed.
 
-    def __init__(self, message, *args, **kwargs):
-        ExecutionFailed.__init__(self,
-                                 message if message else 'Execution Passed called',
-                                 *args, **kwargs)
+    Should not be raised directly, but more detailed exceptions used instead.
+    """
+
+    def __init__(self, message=None, **kwargs):
+        ExecutionFailed.__init__(self, message or self._get_message(), **kwargs)
         self._earlier_failures = []
+
+    def _get_message(self):
+        return "Invalid '%s' usage." \
+               % utils.printable_name(self.__class__.__name__, code_style=True)
 
     def set_earlier_failures(self, failures):
         if failures:
@@ -213,30 +220,26 @@ class ExecutionPassed(ExecutionFailed):
         return ExecutionFailures(self._earlier_failures)
 
 
-class ContinueForLoop(ExecutionPassed):
-
-    def __init__(self):
-        ExecutionPassed.__init__(self,
-                                  'Continue for loop without enclosing for loop.')
-
-
 class PassExecution(ExecutionPassed):
-    pass
+    """Used by 'Pass Execution' keyword."""
+
+    def __init__(self, message):
+        ExecutionPassed.__init__(self, message)
+
+
+class ContinueForLoop(ExecutionPassed):
+    """Used by 'Continue For Loop' keyword."""
 
 
 class ExitForLoop(ExecutionPassed):
-
-    def __init__(self):
-        ExecutionPassed.__init__(self,
-                                  'Exit for loop without enclosing for loop.')
+    """Used by 'Exit For Loop' keyword."""
 
 
 class ReturnFromKeyword(ExecutionPassed):
+    """Used by 'Return From Keyword' keyword."""
 
     def __init__(self, return_value):
-        ExecutionPassed.__init__(self,
-                                 'Return from keyword without enclosing keyword',
-                                 return_value=return_value)
+        ExecutionPassed.__init__(self, return_value=return_value)
 
 
 class RemoteError(RobotError):
