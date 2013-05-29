@@ -73,7 +73,8 @@ class Runner(SuiteVisitor):
             self._suite.suites.append(result)
         self._suite = result
         self._suite_status = SuiteStatus(self._suite_status,
-                                         self._settings.exit_on_failure)
+                                         self._settings.exit_on_failure,
+                                         self._settings.skip_teardown_on_exit)
         self._output.start_suite(self._suite)
         self._run_setup(suite.keywords.setup, self._suite_status)
         self._executed_tests = utils.NormalizedDict(ignore='_')
@@ -111,9 +112,9 @@ class Runner(SuiteVisitor):
         self._context.start_test(result)
         status = TestStatus(self._suite_status)
         if not test.name:
-            status.test_failed('Test case name cannot be empty.')
+            status.test_failed('Test case name cannot be empty.', test.critical)
         if not keywords:
-            status.test_failed('Test case contains no keywords.')
+            status.test_failed('Test case contains no keywords.', test.critical)
         self._run_setup(test.keywords.setup, status)
         try:
             if not status.failures:
