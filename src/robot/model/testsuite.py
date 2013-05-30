@@ -16,7 +16,7 @@ from robot.utils import setter
 
 from .configurer import SuiteConfigurer
 from .criticality import Criticality
-from .filter import Filter
+from .filter import Filter, EmptySuiteRemover
 from .itemlist import ItemList
 from .keyword import Keyword, Keywords
 from .metadata import Metadata
@@ -26,7 +26,7 @@ from .testcase import TestCase, TestCases
 
 
 class TestSuite(ModelObject):
-    __slots__ = ['parent', 'source', '_name', 'doc', '_criticality']
+    __slots__ = ['parent', 'source', '_name', 'doc', '_criticality', '_my_visitors']
     test_class = TestCase
     keyword_class = Keyword
 
@@ -40,6 +40,12 @@ class TestSuite(ModelObject):
         self.tests = []
         self.keywords = []
         self._criticality = None
+        self._my_visitors = []
+
+    @property
+    def _visitors(self):
+        parent_visitors = self.parent._visitors if self.parent else []
+        return self._my_visitors + parent_visitors
 
     def _get_name(self):
         return self._name or ' & '.join(s.name for s in self.suites)
@@ -92,8 +98,11 @@ class TestSuite(ModelObject):
     def test_count(self):
         return len(self.tests) + sum(suite.test_count for suite in self.suites)
 
-    def set_tags(self, add=None, remove=None):
-        self.visit(TagSetter(add, remove))
+    def set_tags(self, add=None, remove=None, persist=False):
+        setter = TagSetter(add, remove)
+        self.visit(setter)
+        if persist:
+            self._my_visitors.append(setter)
 
     def filter(self, included_suites=None, included_tests=None,
                included_tags=None, excluded_tags=None):
@@ -102,6 +111,9 @@ class TestSuite(ModelObject):
 
     def configure(self, **options):
         self.visit(SuiteConfigurer(**options))
+
+    def remove_empty_suites(self):
+        self.visit(EmptySuiteRemover())
 
     def visit(self, visitor):
         visitor.visit_suite(self)

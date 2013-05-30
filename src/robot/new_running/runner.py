@@ -23,10 +23,10 @@ from robot.variables import GLOBAL_VARIABLES
 from robot.running.context import EXECUTION_CONTEXTS
 from robot.running.keywords import Keywords, Keyword
 from robot.running.userkeyword import UserLibrary
-from robot.errors import ExecutionFailed, DataError
+from robot.errors import ExecutionFailed, DataError, PassExecution
 from robot import utils
 
-from .failures import ExecutionStatus
+from .status import SuiteStatus, TestStatus
 
 
 class Runner(SuiteVisitor):
@@ -50,20 +50,21 @@ class Runner(SuiteVisitor):
     def start_suite(self, suite):
         variables = GLOBAL_VARIABLES.copy()
         variables.set_from_variable_table(suite.variables)
-        ns = Namespace(suite,
-                       self._context.namespace.variables if self._context else None,
-                       UserLibrary(suite.user_keywords),
-                       variables)
-        EXECUTION_CONTEXTS.start_suite(ns, self._output, self._settings.dry_run)
-        ns.handle_imports()
-        variables.resolve_delayed()
         result = TestSuite(name=suite.name,
-                           doc=self._resolve_setting(suite.doc),
-                           metadata=[(self._resolve_setting(n),
-                                      self._resolve_setting(v))
-                                     for n, v in suite.metadata.items()],
                            source=suite.source,
                            starttime=utils.get_timestamp())
+        ns = Namespace(result,
+                       self._context.namespace.variables if self._context else None,
+                       UserLibrary(suite.user_keywords),
+                       variables,
+                       suite.imports)
+        EXECUTION_CONTEXTS.start_suite(ns, self._output, self._settings.dry_run)
+        if not (self._suite_status and self._suite_status.failures):  # Skips imports if exiting
+            ns.handle_imports()
+        variables.resolve_delayed()
+        result.doc = self._resolve_setting(suite.doc)
+        result.metadata = [(self._resolve_setting(n), self._resolve_setting(v))
+                           for n, v in suite.metadata.items()]
         if not self.result:
             result.set_criticality(suite.criticality.critical_tags,
                                    suite.criticality.non_critical_tags)
@@ -71,8 +72,11 @@ class Runner(SuiteVisitor):
         else:
             self._suite.suites.append(result)
         self._suite = result
-        self._suite_status = ExecutionStatus(self._suite_status)
+        self._suite_status = SuiteStatus(self._suite_status,
+                                         self._settings.exit_on_failure,
+                                         self._settings.skip_teardown_on_exit)
         self._output.start_suite(self._suite)
+        self._context.set_suite_variables(result)
         self._run_setup(suite.keywords.setup, self._suite_status)
         self._executed_tests = utils.NormalizedDict(ignore='_')
 
@@ -91,7 +95,7 @@ class Runner(SuiteVisitor):
         self._suite.message = self._suite_status.message
         self._context.end_suite(self._suite)
         self._suite = self._suite.parent
-        self._suite_status = self._suite_status.parent_status
+        self._suite_status = self._suite_status.parent
 
     def visit_test(self, test):
         if test.name in self._executed_tests:
@@ -100,29 +104,36 @@ class Runner(SuiteVisitor):
         self._executed_tests[test.name] = True
         result = self._suite.tests.create(name=test.name,
                                           doc=self._resolve_setting(test.doc),
-                                          tags=[self._resolve_setting(t)
-                                                for t in test.tags],
+                                          tags=self._variables.replace_meta('fixme', test.tags, []),
                                           starttime=utils.get_timestamp(),
                                           timeout=self._get_timeout(test),
                                           status='RUNNING')
         keywords = Keywords(test.keywords.normal, test.continue_on_failure)
         self._context.start_test(result)
-        status = ExecutionStatus(self._suite_status, test=True)
-        if not test.name:
-            status.test_failed('Test case name cannot be empty.')
-        if not keywords:
-            status.test_failed('Test case contains no keywords.')
-        self._run_setup(test.keywords.setup, status)
+        status = TestStatus(self._suite_status)
+        if not status.failures and not test.name:
+            status.test_failed('Test case name cannot be empty.', result.critical)
+        if not status.failures and not keywords:
+            status.test_failed('Test case contains no keywords.', result.critical)
+        self._run_setup(test.keywords.setup, status, result)
         try:
             if not status.failures:
                 keywords.run(self._context)
+        except PassExecution, exception:
+            err = exception.earlier_failures
+            if err:
+                status.test_failed(err, result.critical)
+            else:
+                result.message = exception.message
         except ExecutionFailed, err:
-            status.test_failed(err)
+            status.test_failed(err, test.critical)
         result.status = status.status
         result.message = status.message or result.message
         if status.teardown_allowed:
-            self._context.set_test_status_before_teardown(status.message, status.status)  # TODO: This is fugly
-            self._run_teardown(test.keywords.teardown, status)
+            self._context.set_test_status_before_teardown(result.message, status.status)  # TODO: This is fugly
+            self._run_teardown(test.keywords.teardown, status, result)
+        if not status.failures and result.timeout and result.timeout.timed_out():
+            status.test_failed(result.timeout.get_message(), result.critical)
         result.status = status.status
         result.message = status.message or result.message
         result.endtime = utils.get_timestamp()
@@ -136,15 +147,19 @@ class Runner(SuiteVisitor):
         timeout.start()
         return timeout
 
-    def _run_setup(self, setup, status):
+    def _run_setup(self, setup, status, result=None):
         if not status.failures:
             failure = self._run_setup_or_teardown(setup, 'setup')
             status.setup_executed(failure)
+            if result and isinstance(failure, PassExecution):
+                result.message = failure.message
 
-    def _run_teardown(self, teardown, status):
+    def _run_teardown(self, teardown, status, result=None):
         if status.teardown_allowed:
             failure = self._run_setup_or_teardown(teardown, 'teardown')
             status.teardown_executed(failure)
+            if result and isinstance(failure, PassExecution):
+                result.message = failure.message
             return failure
 
     def _run_setup_or_teardown(self, data, type):
