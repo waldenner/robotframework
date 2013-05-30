@@ -15,6 +15,11 @@ LOG_PATH = join(TEMP, 'log.html')
 LOG = 'Log:     %s' % LOG_PATH
 
 
+def run_without_outputs(*args, **kwargs):
+    kwargs.update(output='NONE', log='NoNe', report='none')
+    return run(*args, **kwargs)
+
+
 class StreamWithOnlyWriteAndFlush(object):
 
     def __init__(self):
@@ -85,8 +90,8 @@ class TestRun(Base):
         assert exists(LOG_PATH)
 
     def test_run_multiple_times(self):
-        assert_equals(run(self.data, output='NONE', critical='nomatch'), 0)
-        assert_equals(run(self.data, output='NONE', name='New Name'), 1)
+        assert_equals(run_without_outputs(self.data, critical='nomatch'), 0)
+        assert_equals(run_without_outputs(self.data, name='New Name'), 1)
         self._assert_outputs([('Pass And Fail', 2), ('New Name', 2), (LOG, 0)])
 
     def test_run_fails(self):
@@ -98,28 +103,28 @@ class TestRun(Base):
 
     def test_custom_stdout(self):
         stdout = StringIO()
-        assert_equals(run(self.data, output='NONE', stdout=stdout), 1)
+        assert_equals(run_without_outputs(self.data, stdout=stdout), 1)
         self._assert_output(stdout, [('Pass And Fail', 2), ('Output:', 1),
                                      ('Log:', 0), ('Report:', 0)])
         self._assert_outputs()
 
     def test_custom_stderr(self):
         stderr = StringIO()
-        assert_equals(run(self.warn, output='NONE', stderr=stderr), 0)
+        assert_equals(run_without_outputs(self.warn, stderr=stderr), 0)
         self._assert_output(stderr, [('[ WARN ]', 4), ('[ ERROR ]', 1)])
         self._assert_outputs([('Warnings And Errors', 2), ('Output:', 1),
                               ('Log:', 0), ('Report:', 0)])
 
     def test_custom_stdout_and_stderr_with_minimal_implementation(self):
         output = StreamWithOnlyWriteAndFlush()
-        assert_equals(run(self.warn, output='NONE', stdout=output, stderr=output), 0)
+        assert_equals(run_without_outputs(self.warn, stdout=output, stderr=output), 0)
         self._assert_output(output, [('[ WARN ]', 4), ('[ ERROR ]', 1),
                                      ('Warnings And Errors', 3), ('Output:', 1),
                                      ('Log:', 0), ('Report:', 0)])
         self._assert_outputs()
 
     def test_multi_options_as_single_string(self):
-        assert_equals(run(self.data, output='NONE', exclude='fail'), 0)
+        assert_equals(run_without_outputs(self.data, exclude='fail'), 0)
         self._assert_outputs([('FAIL', 0)])
 
 
