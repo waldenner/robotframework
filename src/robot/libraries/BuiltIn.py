@@ -12,7 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os    # FIXME: This seems to be used by Evaluate!!!!
 import re
 import time
 
@@ -25,7 +24,7 @@ from robot.utils import asserts
 from robot.variables import is_var, is_list_var
 from robot.running import Keyword, RUN_KW_REGISTER
 from robot.running.context import EXECUTION_CONTEXTS
-from robot.common import UserErrorHandler
+from robot.running.usererrorhandler import UserErrorHandler
 from robot.version import get_version
 
 if utils.is_jython:
@@ -386,6 +385,14 @@ class _Verify:
         | Should Be True | '${status}' == 'PASS' | # Strings must be quoted |
         | Should Be True | ${number}   | # Passes if ${number} is not zero |
         | Should Be True | ${list}     | # Passes if ${list} is not empty  |
+
+        Starting from Robot Framework 2.8, `Should Be True` automatically
+        imports Python's os- and sys-modules:
+
+        | Should Be True | os.linesep == '\\n' | # Is Unix |
+        | Should Be True | os.linesep == '\\r\\n' | # Is Windows |
+        | Should Be True | sys.platform == 'darwin' | # Is OS X |
+        | Should Be True | sys.platform == 'linux2' | # Is Linux |
         """
         if not msg:
             msg = "'%s' should be true" % condition
@@ -1201,6 +1208,12 @@ class _RunKeyword:
         and thus cannot come from variables. If you need to use literal ELSE
         and ELSE IF strings as arguments, you can either use variables or
         escape them with a backslash like `\\ELSE` and `\\ELSE IF`.
+
+        Starting from Robot Framework 2.8, Python's os- and sys-modules are automatically
+        imported when evaluating the `condition`:
+
+        | `Run Keyword If` | os.sep == '/' | `Unix Keyword` |
+        | ...              | ELSE          | `Windows Keyword` |
         """
         args, branch = self._split_elif_or_else_branch(args)
         if self._is_true(condition):
@@ -2438,11 +2451,7 @@ class BuiltIn(_Verify, _Converter, _Variables, _RunKeyword, _Control, _Misc):
 
     def _is_true(self, condition):
         if isinstance(condition, basestring):
-            try:
-                condition = eval(condition)
-            except:
-                raise RuntimeError("Evaluating condition '%s' failed: %s"
-                                   % (condition, utils.get_error_message()))
+            condition = self.evaluate(condition, modules='os,sys')
         return bool(condition)
 
 

@@ -12,5 +12,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .model import TestSuite, TestCase, Keyword
-from .builder import TestSuiteBuilder
+from robot.errors import DataError
+
+
+class BaseLibrary:
+
+    def get_handler(self, name):
+        try:
+            return self.handlers[name]
+        except KeyError:
+            raise DataError("No keyword handler with name '%s' found"  % name)
+
+    def has_handler(self, name):
+        return self.handlers.has_key(name)
+
+    def __len__(self):
+        return len(self.handlers)
