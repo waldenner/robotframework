@@ -22,17 +22,30 @@ from .model import TestSuite, ForLoop
 
 class TestSuiteBuilder(object):
 
-    def __init__(self, include_suites=None, warn_on_skipped=False):
+    def __init__(self, include_suites=None, warn_on_skipped=False, include_empty_suites=False):
         self.include_suites = include_suites
         self.warn_on_skipped = warn_on_skipped
+        self.include_empty_suites = include_empty_suites
 
     def build(self, *paths):
         if len(paths) == 1:
-            return self._build_suite(self._parse(paths[0]))
+            return self._build_and_check_if_empty(paths[0])
         root = TestSuite()
         for path in paths:
-            root.suites.append(self._build_suite(self._parse(path)))
+            root.suites.append(self._build_and_check_if_empty(path))
         return root
+
+    def _build_and_check_if_empty(self, path):
+        builded = self._build_suite(self._parse(path))
+        if not self._empty_suites_allowed and not builded.test_count:
+                raise DataError("Suite '%s' contains no tests." % builded.name)
+        builded.remove_empty_suites()
+        return builded
+
+    @property
+    def _empty_suites_allowed(self):
+        return self.include_empty_suites or self.include_suites
+
 
     def _parse(self, path):
         try:
@@ -77,7 +90,7 @@ class TestSuiteBuilder(object):
         test = suite.tests.create(name=data.name,
                                   doc=unicode(data.doc),
                                   tags=values.tags.value,
-                                  continue_on_failure=bool(values.template),
+                                  template=self._get_template(values.template),
                                   timeout=self._get_timeout(values.timeout))
         self._create_setup(test, values.setup)
         for step_data in data.steps:
@@ -86,6 +99,9 @@ class TestSuiteBuilder(object):
 
     def _get_timeout(self, timeout):
         return (timeout.value, timeout.message) if timeout else None
+
+    def _get_template(self, template):
+        return unicode(template) if template.is_active() else None
 
     def _create_user_keyword(self, suite, data):
         # TODO: Tests and uks have inconsistent timeout types
@@ -100,13 +116,8 @@ class TestSuiteBuilder(object):
             self._create_step(uk, step_data)
 
     def _create_variable(self, suite, data):
-        if not data:
-            return
-        if data.name.startswith('$'):
-            value = data.value[0]
-        else:
-            value = data.value
-        suite.variables.create(name=data.name, value=value)
+        if data:
+            suite.variables.create(name=data.name, value=data.value)
 
     def _create_setup(self, parent, data):
         if data.is_active():
