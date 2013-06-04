@@ -344,7 +344,7 @@ if 'robot' not in sys.modules and __name__ == '__main__':
 from robot.conf import RobotSettings
 from robot.output import LOGGER
 from robot.reporting import ResultWriter
-from robot.running import  TestSuiteBuilder
+from robot.running import TestSuiteBuilder
 from robot.utils import Application
 
 
@@ -366,15 +366,18 @@ class RobotFramework(Application):
                                  settings['RunEmptySuite']).build(*datasources)
         suite.configure(**settings.suite_config)
         result = suite.run(settings)
-        result.configure(status_rc=settings.status_rc,
-                         stat_config=settings.statistics_config)
         LOGGER.info("Tests execution ended. Statistics:\n%s"
                     % result.suite.statistics.message)
-        rc = result.return_code
         if settings.log or settings.report or settings.xunit:
             writer = ResultWriter(settings.output if settings.log else result)
             writer.write_results(settings.get_rebot_settings())
-        return rc
+        return result.return_code
+
+    def validate(self, options, arguments):
+        return self._filter_options_without_value(options), arguments
+
+    def _filter_options_without_value(self, options):
+        return dict((name, value) for name, value in options.items() if value)
 
 
 def run_cli(arguments):

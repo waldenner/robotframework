@@ -122,6 +122,37 @@ class TestTags(unittest.TestCase):
         assert_true(new_tags is not tags)
 
 
+class TestNormalizing(unittest.TestCase):
+
+    def test_empty(self):
+        self._verify([], [])
+
+    def test_case_and_space(self):
+        for inp in ['lower'], ['MiXeD', 'UPPER'], ['a few', 'spaces here']:
+            self._verify(inp, inp)
+
+    def test_underscore(self):
+        self._verify(['a_tag', 'a tag', 'ATag'], ['a_tag'])
+        self._verify(['tag', '_t_a_g_'], ['tag'])
+
+    def test_remove_empty_and_none(self):
+        for inp in ['', 'X', '', '  ', '\n'], ['none', 'N O N E', 'X', '', '_']:
+            self._verify(inp, ['X'])
+
+    def test_remove_dupes(self):
+        for inp in ['dupe', 'DUPE', ' d u p e '], ['d U', 'du', 'DU', 'Du']:
+            self._verify(inp, [inp[0]])
+
+    def test_sorting(self):
+        for inp, exp in [(['SORT','1','B','2','a'], ['1','2','a','B','SORT']),
+                         (['all', 'A L L', 'NONE', '10', '1', 'A', 'a', ''],
+                           ['1', '10', 'A', 'all'])]:
+            self._verify(inp, exp)
+
+    def _verify(self, tags, expected):
+        assert_equal(list(Tags(tags)), expected)
+
+
 class TestTagPatterns(unittest.TestCase):
 
     def test_match(self):
