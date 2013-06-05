@@ -14,8 +14,8 @@
 
 """Contains base classes and other generic functionality.
 
-In RF 2.7 this package is mainly used by :mod:`robot.result` package, but
-there is a plan to change also :mod:`robot.running` to use this in RF 2.8.
+The modules in this package are used internally by Robot Framework
+and are not intended to be used as public APIs.
 
 This package is considered stable.
 """
