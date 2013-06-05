@@ -24,6 +24,8 @@ package:
 
     from robot.api import ResultWriter
 
+ResultWriter should be imported via robot.api
+
 This package is considered stable.
 """
 
