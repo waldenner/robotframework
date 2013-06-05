@@ -2344,7 +2344,7 @@ class _Misc:
         ns = self._namespace
         if ns.test:
             ns.test.tags.add(tags)
-            ns.variables.set_test('@{TEST_TAGS}', ns.test.tags[:])
+            ns.variables.set_test('@{TEST_TAGS}', list(ns.test.tags))
         elif self._context.suite_teardown:
             raise RuntimeError("'Set Tags' and 'Remove Tags' keywords "
                                "cannot be used in suite teardown.")
@@ -2352,7 +2352,6 @@ class _Misc:
             ns.suite.set_tags(tags, persist=True)
         self.log('Set tag%s %s.' % (utils.plural_or_not(tags),
                                     utils.seq2str(tags)))
-
 
     def remove_tags(self, *tags):
         """Removes given `tags` from the current test or all tests in a suite.
@@ -2374,7 +2373,7 @@ class _Misc:
         ns = self._namespace
         if ns.test:
             ns.test.tags.remove(tags)
-            ns.variables.set_test('@{TEST_TAGS}', ns.test.tags[:])
+            ns.variables.set_test('@{TEST_TAGS}', list(ns.test.tags))
         elif self._context.suite_teardown:
             raise RuntimeError("'Set Tags' and 'Remove Tags' keywords "
                                "cannot be used in suite teardown.")
