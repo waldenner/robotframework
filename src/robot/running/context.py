@@ -75,6 +75,16 @@ class _ExecutionContext(object):
         finally:
             self.suite_teardown = False
 
+    @contextmanager
+    def in_keyword_teardown(self, error):
+        self.variables['${KEYWORD_STATUS}'] = 'FAIL' if error else 'PASS'
+        self.variables['${KEYWORD_MESSAGE}'] = unicode(error or '')
+        self._in_keyword_teardown += 1
+        try:
+            yield
+        finally:
+            self._in_keyword_teardown -= 1
+
     @property
     def teardown(self):
         if self.suite_teardown or self._in_keyword_teardown:
@@ -85,18 +95,6 @@ class _ExecutionContext(object):
     @property
     def variables(self):
         return self.namespace.variables
-
-    # TODO: Remove
-    def get_current_vars(self):
-        return self.variables
-
-    def start_keyword_teardown(self, error):
-        self.variables['${KEYWORD_STATUS}'] = 'FAIL' if error else 'PASS'
-        self.variables['${KEYWORD_MESSAGE}'] = unicode(error or '')
-        self._in_keyword_teardown += 1
-
-    def end_keyword_teardown(self):
-        self._in_keyword_teardown -= 1
 
     def set_timeout(self, err):
         self.timeout_occured = bool(err.timeout)
@@ -117,7 +115,7 @@ class _ExecutionContext(object):
 
     def set_suite_variables(self, suite):
         self.variables['${SUITE_NAME}'] = suite.longname
-        self.variables['${SUITE_SOURCE}'] = suite.source
+        self.variables['${SUITE_SOURCE}'] = suite.source or ''
         self.variables['${SUITE_DOCUMENTATION}'] = suite.doc
         self.variables['${SUITE_METADATA}'] = suite.metadata.copy()
 
@@ -166,3 +164,6 @@ class _ExecutionContext(object):
 
     def trace(self, message):
         self.output.trace(message)
+
+    def info(self, message):
+        self.output.info(message)

@@ -25,9 +25,14 @@ from .xunitwriter import XUnitWriter
 
 
 class ResultWriter(object):
+    """The writer to create output, log, report and XUnit files.
+
+    :param sources: can be either single
+        :class:`~robot.result.executionresult.Result` object or
+        multiple paths to existing output.xml files.
+    """
 
     def __init__(self, *sources):
-        # TODO: Document that sources can be XML output files or one Result
         self._sources = sources
 
     def write_results(self, settings=None, **options):
@@ -93,10 +98,7 @@ class Results(object):
     @property
     def result(self):
         if self._result is None:
-            # TODO: Are keywords really needed w/ xUnit?
-            include_keywords = bool(self._settings.log or
-                                    self._settings.output or
-                                    self._settings.xunit)
+            include_keywords = bool(self._settings.log or self._settings.output)
             self._result = ExecutionResult(include_keywords=include_keywords,
                                            *self._sources)
             self._result.configure(self._settings.status_rc,

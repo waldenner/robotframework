@@ -71,8 +71,8 @@ class TestCase(model.TestCase):
     __slots__ = ['template']
     keyword_class = Keyword
 
-    def __init__(self, template=None, **kwargs):
-        model.TestCase.__init__(self, **kwargs)
+    def __init__(self, name='', doc='', tags=None, timeout=None, template=None):
+        model.TestCase.__init__(self, name, doc, tags, timeout)
         self.template = template
 
     @setter
@@ -85,8 +85,19 @@ class TestSuite(model.TestSuite):
     test_class = TestCase
     keyword_class = Keyword
 
-    def __init__(self, **kwargs):
-        model.TestSuite.__init__(self, **kwargs)
+    def __init__(self,  name='', doc='', metadata=None, source=None):
+        """Running model for single test suite.
+
+        :ivar parent: Parent :class:`TestSuite` or `None`.
+        :ivar name: Test suite name.
+        :ivar doc: Test suite documentation.
+        :ivar metadata: Test suite metadata as a dictionary.
+        :ivar source: Path to the source file or directory.
+        :ivar suites: Child suites.
+        :ivar tests: A list of :class:`~.testcase.TestCase` instances.
+        :ivar keywords: A list containing setup and teardown.
+        """
+        model.TestSuite.__init__(self, name, doc, metadata, source)
         self.imports = []
         self.user_keywords = []
         self.variables = []
@@ -152,6 +163,7 @@ class Timeout(object):
 class UserKeyword(object):
     # TODO: In 2.9:
     # - Teardown should be handled as a keyword like with tests and suites.
+    # - Timeout should be handled consistently with tests.
     # - Also resource files should use these model objects.
 
     def __init__(self, name, args=(), doc='', return_=None, timeout=None,
