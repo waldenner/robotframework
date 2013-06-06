@@ -1,4 +1,4 @@
-#  Copyright 2008-2012 Nokia Siemens Networks Oyj
+#  Copyright 2008-2013 Nokia Siemens Networks Oyj
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -24,8 +24,7 @@ class ItemList(object):
             self.extend(items)
 
     def create(self, *args, **kwargs):
-        self.append(self._item_class(*args, **kwargs))
-        return self._items[-1]
+        return self.append(self._item_class(*args, **kwargs))
 
     def append(self, item):
         self._check_type_and_set_attrs(item)

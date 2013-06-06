@@ -1,4 +1,4 @@
-#  Copyright 2008-2012 Nokia Siemens Networks Oyj
+#  Copyright 2008-2013 Nokia Siemens Networks Oyj
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 from itertools import chain
 
-from robot.model import TotalStatisticsBuilder
+from robot.model import TotalStatisticsBuilder, Criticality
 from robot import model, utils
 
 from .configurer import SuiteConfigurer
@@ -27,7 +27,7 @@ from .testcase import TestCase
 
 
 class TestSuite(model.TestSuite):
-    __slots__ = ['message', 'starttime', 'endtime']
+    __slots__ = ['_criticality', 'message', 'starttime', 'endtime']
     test_class = TestCase
     keyword_class = Keyword
 
@@ -49,9 +49,23 @@ class TestSuite(model.TestSuite):
         :ivar endtime: Test suite execution end time as a timestamp.
         """
         model.TestSuite.__init__(self, name, doc, metadata, source)
+        self._criticality = None
         self.message = message
         self.starttime = starttime
         self.endtime = endtime
+
+    def set_criticality(self, critical_tags=None, non_critical_tags=None):
+        if self.parent:
+            raise TypeError('Criticality can only be set to top level suite')
+        self._criticality = Criticality(critical_tags, non_critical_tags)
+
+    @property
+    def criticality(self):
+        if self.parent:
+            return self.parent.criticality
+        if self._criticality is None:
+            self.set_criticality()
+        return self._criticality
 
     @property
     def status(self):
