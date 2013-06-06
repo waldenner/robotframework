@@ -1,4 +1,4 @@
-#  Copyright 2008-2012 Nokia Siemens Networks Oyj
+#  Copyright 2008-2013 Nokia Siemens Networks Oyj
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -314,6 +314,13 @@ class _BaseSettings(object):
             'tag_doc': self['TagDoc'],
         }
 
+    @property
+    def critical_tags(self):
+        return self['Critical']
+
+    @property
+    def non_critical_tags(self):
+        return self['NonCritical']
 
 class RobotSettings(_BaseSettings):
     _extra_cli_opts = {'Output'             : ('output', 'output.xml'),
@@ -364,8 +371,6 @@ class RobotSettings(_BaseSettings):
             'include_suites': self['SuiteNames'],
             'include_tests': self['TestNames'],
             'empty_suite_ok': self['RunEmptySuite'],
-            'critical': self['Critical'],
-            'non_critical': self['NonCritical'],
             'randomize_suites': self.randomize_suites,
             'randomize_tests': self.randomize_tests
         }
