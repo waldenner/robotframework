@@ -24,20 +24,6 @@ def eq(str1, str2, ignore=(), caseless=True, spaceless=True):
     return str1 == str2
 
 
-# TODO: Remove matches and matches_any in 2.8.
-# They aren't used much in 2.7 anymore but don't want to remove them after RC.
-
-def matches(string, pattern, ignore=(), caseless=True, spaceless=True):
-    """Deprecated!! Use Matcher instead."""
-    return Matcher(pattern, ignore, caseless, spaceless).match(string)
-
-
-def matches_any(string, patterns, ignore=(), caseless=True, spaceless=True):
-    """Deprecated!! Use MultiMatcher instead."""
-    matcher = MultiMatcher(patterns, ignore, caseless, spaceless)
-    return matcher.match(string)
-
-
 class Matcher(object):
     _pattern_tokenizer = re.compile('(\*|\?)')
     _wildcards = {'*': '.*', '?': '.'}
@@ -62,6 +48,9 @@ class Matcher(object):
     def match(self, string):
         return self._regexp.match(self._normalize(string)) is not None
 
+    def match_any(self, strings):
+        return any(self.match(s) for s in strings)
+
 
 class MultiMatcher(object):
 
@@ -82,6 +71,9 @@ class MultiMatcher(object):
         if self._matchers:
             return any(m.match(string) for m in self._matchers)
         return self._match_if_no_patterns
+
+    def match_any(self, strings):
+        return any(self.match(s) for s in strings)
 
     def __len__(self):
         return len(self._matchers)

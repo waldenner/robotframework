@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from __future__ import with_statement
+
 import os
 import re
 
@@ -24,8 +26,7 @@ from robot import utils
 
 from .baselibrary import BaseLibrary
 from .usererrorhandler import UserErrorHandler
-from .keywords import Keywords
-from .fixture import Teardown
+from .keywords import Keywords, Keyword
 from .timeouts import KeywordTimeout
 from .arguments import (ArgumentValidator, UserKeywordArgumentParser,
                         ArgumentResolver, ArgumentMapper)
@@ -142,14 +143,13 @@ class UserKeywordHandler(object):
             context.end_user_keyword()
 
     def _run(self, context, arguments):
-        variables = context.get_current_vars()
         if context.dry_run:
-            return self._dry_run(context, variables, arguments)
-        return self._normal_run(context, variables, arguments)
+            return self._dry_run(context, arguments)
+        return self._normal_run(context, arguments)
 
-    def _dry_run(self, context, variables, arguments):
+    def _dry_run(self, context, arguments):
         arguments = self._resolve_dry_run_args(arguments)
-        error, return_ = self._execute(context, variables, arguments)
+        error, return_ = self._execute(context, arguments)
         if error:
             raise error
 
@@ -158,12 +158,12 @@ class UserKeywordHandler(object):
         missing_args = len(self.arguments.positional) - len(arguments)
         return tuple(arguments) + (None,) * missing_args
 
-    def _normal_run(self, context, variables, arguments):
-        arguments = self._resolve_arguments(arguments, variables)
-        error, return_ = self._execute(context, variables, arguments)
+    def _normal_run(self, context, arguments):
+        arguments = self._resolve_arguments(arguments, context.variables)
+        error, return_ = self._execute(context, arguments)
         if error and not error.can_continue(context.teardown):
             raise error
-        return_value = self._get_return_value(variables, return_)
+        return_value = self._get_return_value(context.variables, return_)
         if error:
             error.return_value = return_value
             raise error
@@ -175,9 +175,9 @@ class UserKeywordHandler(object):
         positional, named = resolver.resolve(arguments, variables)
         return mapper.map(positional, named, variables)
 
-    def _execute(self, context, variables, arguments):
-        self._set_variables(arguments, variables)
-        context.output.trace(lambda: self._log_args(variables))
+    def _execute(self, context, arguments):
+        self._set_variables(arguments, context.variables)
+        context.output.trace(lambda: self._log_args(context.variables))
         self._verify_keyword_is_valid()
         self.timeout.start()
         error = return_ = pass_ = None
@@ -191,7 +191,8 @@ class UserKeywordHandler(object):
             error = exception.earlier_failures
         except ExecutionFailed, exception:
             error = exception
-        td_error = self._run_teardown(context, error)
+        with context.in_keyword_teardown(error):
+            td_error = self._run_teardown(context)
         if error or td_error:
             error = UserKeywordExecutionFailed(error, td_error)
         return error or pass_, return_
@@ -217,17 +218,23 @@ class UserKeywordHandler(object):
                 for name in args]
         return 'Arguments: [ %s ]' % ' | '.join(args)
 
-    def _run_teardown(self, context, error):
+    def _run_teardown(self, context):
         if not self.teardown:
             return None
-        teardown = Teardown(self.teardown.name, self.teardown.args)
-        teardown.replace_variables(context.get_current_vars(), [])
-        context.start_keyword_teardown(error)
-        error = teardown.run(context)
-        context.end_keyword_teardown()
-        if isinstance(error, PassExecution):
+        try:
+            name = context.variables.replace_string(self.teardown.name)
+        except DataError, err:
+            return ExecutionFailed(unicode(err), syntax=True)
+        if name.upper() in ('', 'NONE'):
             return None
-        return error
+        kw = Keyword(name, self.teardown.args, type='teardown')
+        try:
+            kw.run(context)
+        except PassExecution:
+            return None
+        except ExecutionFailed, err:
+            return err
+        return None
 
     def _verify_keyword_is_valid(self):
         if self._errors:
@@ -340,6 +347,6 @@ class EmbeddedArgs(UserKeywordHandler):
     def _run(self, context, args):
         if not context.dry_run:
             for name, value in self.embedded_args:
-                context.get_current_vars()[name] = \
-                    context.get_current_vars().replace_scalar(value)
+                context.variables[name] = \
+                    context.variables.replace_scalar(value)
         return UserKeywordHandler._run(self, context, args)
