@@ -36,7 +36,8 @@ class _BaseSettings(object):
                  'OutputDir'        : ('outputdir', utils.abspath('.')),
                  'Log'              : ('log', 'log.html'),
                  'Report'           : ('report', 'report.html'),
-                 'XUnitFile'        : ('xunitfile', None),
+                 'XUnit'            : ('xunit', None),
+                 'DeprecatedXUnit'  : ('xunitfile', None),
                  'SplitLog'         : ('splitlog', False),
                  'TimestampOutputs' : ('timestampoutputs', False),
                  'LogTitle'         : ('logtitle', None),
@@ -55,7 +56,7 @@ class _BaseSettings(object):
                  'StdOut'           : ('stdout', None),
                  'StdErr'           : ('stderr', None),
                  'XUnitSkipNonCritical' : ('xunitskipnoncritical', False)}
-    _output_opts = ['Output', 'Log', 'Report', 'DebugFile', 'XUnitFile']
+    _output_opts = ['Output', 'Log', 'Report', 'XUnit', 'DebugFile']
 
     def __init__(self, options=None, **extra_options):
         self._opts = {}
@@ -70,6 +71,8 @@ class _BaseSettings(object):
                 value = [value]
             self[name] = self._process_value(name, value)
         self['TestNames'] += self['RunFailed']
+        if self['DeprecatedXUnit']:
+            self['XUnit'] = self['DeprecatedXUnit']
 
     def __setitem__(self, name, value):
         if name not in self._cli_opts:
@@ -95,6 +98,9 @@ class _BaseSettings(object):
             return [v.replace('AND', '&').replace('_', ' ') for v in value]
         if name in self._output_opts and (not value or value.upper() == 'NONE'):
             return None
+        if name == 'DeprecatedXUnit':
+            LOGGER.warn('Option --xunitfile is deprecated. Use --xunit instead.')
+            return self._process_value('XUnit', value)
         if name == 'OutputDir':
             return utils.abspath(value)
         if name in ['SuiteStatLevel', 'MonitorWidth']:
@@ -172,31 +178,31 @@ class _BaseSettings(object):
     def _get_output_file(self, option):
         """Returns path of the requested output file and creates needed dirs.
 
-        `option` can be 'Output', 'Log', 'Report', 'DebugFile' or 'XUnitFile'.
+        `option` can be 'Output', 'Log', 'Report', 'XUnit' or 'DebugFile'.
         """
-        value = self._opts[option]
-        if not value:
+        name = self._opts[option]
+        if not name:
             return None
         if option == 'Log' and self._output_disabled():
             self['Log'] = None
             LOGGER.error('Log file is not created if output.xml is disabled.')
             return None
-        value = self._process_output_name(value, option)
-        path = utils.abspath(os.path.join(self['OutputDir'], value))
+        name = self._process_output_name(option, name)
+        path = utils.abspath(os.path.join(self['OutputDir'], name))
         self._create_output_dir(os.path.dirname(path), option)
         return path
 
-    def _process_output_name(self, name, type_):
+    def _process_output_name(self, option, name):
         base, ext = os.path.splitext(name)
         if self['TimestampOutputs']:
             base = '%s-%s' % (base, utils.get_start_timestamp('', '-', ''))
-        ext = self._get_output_extension(ext, type_)
+        ext = self._get_output_extension(ext, option)
         return base + ext
 
     def _get_output_extension(self, ext, type_):
         if ext != '':
             return ext
-        if type_ in ['Output', 'XUnitFile']:
+        if type_ in ['Output', 'XUnit']:
             return '.xml'
         if type_ in ['Log', 'Report']:
             return '.html'
@@ -289,7 +295,7 @@ class _BaseSettings(object):
 
     @property
     def xunit(self):
-        return self['XUnitFile']
+        return self['XUnit']
 
     @property
     def split_log(self):
@@ -321,6 +327,7 @@ class _BaseSettings(object):
     @property
     def non_critical_tags(self):
         return self['NonCritical']
+
 
 class RobotSettings(_BaseSettings):
     _extra_cli_opts = {'Output'             : ('output', 'output.xml'),
