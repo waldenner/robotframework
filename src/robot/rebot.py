@@ -14,6 +14,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""Module implementing the command line entry point for post-processing outputs.
+
+This module can be executed from the command line using the following
+approaches::
+
+    python -m robot.rebot
+    python path/to/robot/rebot.py
+
+Instead of ``python`` it is possible to use also other Python interpreters.
+This module is also used by the installed ``rebot``, ``jyrebot`` and
+``ipyrebot`` start-up scripts.
+
+This module also provides :func:`rebot` and :func:`rebot_cli` functions
+that can be used programmatically. Other code is for internal usage.
+"""
+
 USAGE = """Rebot -- Robot Framework report and log generator
 
 Version:  <VERSION>
@@ -96,14 +112,16 @@ Options
                           is considered relative to that unless it is absolute.
  -o --output file         XML output file. Not created unless this option is
                           specified. Given path, similarly as paths given to
-                          --log and --report, is relative to --outputdir unless
-                          given as an absolute path. Default: output.xml
+                          --log, --report and --xunit, is relative to
+                          --outputdir unless given as an absolute path.
  -l --log file            HTML log file. Can be disabled by giving a special
-                          name `NONE`. Examples: `--log mylog.html`, `-l none`
+                          name `NONE`. Default: log.html
+                          Examples: `--log mylog.html`, `-l none`
  -r --report file         HTML report file. Can be disabled with `NONE`
-                          similarly as --log. Default is `report.html`.
- -x --xunitfile file      xUnit compatible result file. Not created unless this
+                          similarly as --log. Default: report.html
+ -x --xunit file          xUnit compatible result file. Not created unless this
                           option is specified.
+    --xunitfile file      Deprecated. Use --xunit instead.
     --xunitskipnoncritical  Mark non-critical tests on xUnit output as skipped.
  -T --timestampoutputs    When this option is used, timestamp in a format
                           `YYYYMMDD-hhmmss` is added to all generated output
@@ -239,7 +257,7 @@ ROBOT_SYSLOG_FILE         Path to a file where Robot Framework writes internal
                           value `NONE`, writing to the syslog file is disabled.
 ROBOT_SYSLOG_LEVEL        Log level to use when writing to the syslog file.
                           Available levels are the same as for --loglevel
-                          option to Robot and the default is INFO.
+                          command line option and the default is INFO.
 
 Examples
 ========
@@ -300,7 +318,7 @@ def rebot_cli(arguments):
     a better API for that usage and does not call :func:`sys.exit` like this
     method.
 
-    .. code-block:: python
+    Example::
 
         from robot import rebot_cli
 
@@ -317,9 +335,8 @@ def rebot(*datasources, **options):
     their names are same as long command line options without hyphens.
 
     Options that can be given on the command line multiple times can be
-    passed as lists like `include=['tag1', 'tag2']`. Starting from 2.7.2,
-    when such option is used only once, it can be given also as a single string
-    like `include='tag'`.
+    passed as lists like `include=['tag1', 'tag2']`. If such option is used
+    only once, it can be given also as a single string like `include='tag'`.
 
     To capture stdout and/or stderr streams, pass open file objects in as
     special keyword arguments `stdout` and `stderr`, respectively.

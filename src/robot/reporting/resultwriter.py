@@ -15,8 +15,7 @@
 from robot.conf import RebotSettings
 from robot.errors import DataError
 from robot.output import LOGGER
-from robot.result import ExecutionResult
-from robot.result.executionresult import Result
+from robot.result import ExecutionResult, Result
 from robot.utils import unic
 
 from .jsmodelbuilders import JsModelBuilder
@@ -25,17 +24,32 @@ from .xunitwriter import XUnitWriter
 
 
 class ResultWriter(object):
-    """The writer to create output, log, report and XUnit files.
+    """A class to create log, report, output XML and xUnit files.
 
-    :param sources: can be either single
-        :class:`~robot.result.executionresult.Result` object or
-        multiple paths to existing output.xml files.
+    :param sources: Either one :class:`~robot.result.executionresult.Result`
+        object, or one or more paths to existing output XML files.
+
+    By default writes ``report.html`` and ``log.html``, but no output XML
+    or xUnit files. Custom file names can be given and results disabled
+    or enabled using ``settings`` or ``options`` passed to the
+    :meth:`write_results` method. The latter is typically more convenient::
+
+        writer = ResultWriter(result)
+        writer.write_results(report='custom.html', log=None, xunit='xunit.xml')
     """
 
     def __init__(self, *sources):
         self._sources = sources
 
     def write_results(self, settings=None, **options):
+        """Writes results based on the given ``settings``  or ``options``.
+
+        :param settings: :class:`~robot.conf.settings.RebotSettings` object
+            to configure result writing.
+        :param options: Used to construct new
+            :class:`~robot.conf.settings.RebotSettings` object if ``settings``
+            are not given.
+        """
         settings = settings or RebotSettings(options)
         results = Results(settings, *self._sources)
         if settings.output:
