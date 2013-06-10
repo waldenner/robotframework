@@ -19,7 +19,7 @@ import signal
 import subprocess
 import sys
 
-from robot.utils import ConnectionCache, encode_to_system
+from robot.utils import ConnectionCache, encode_to_system, decode_from_system
 from robot.version import get_version
 from robot.api import logger
 
@@ -306,20 +306,20 @@ class Process(object):
                                    stdin=subprocess.PIPE,
                                    shell=config.shell,
                                    cwd=config.cwd,
-                                   env=config.env)
+                                   env=config.env,
+                                   universal_newlines=True)
         self._results[process] = ExecutionResult(process,
                                                  config.stdout_stream,
                                                  config.stderr_stream)
         return self._started_processes.register(process, alias=config.alias)
 
     def _cmd(self, args, command, use_shell):
-        # TODO: Why is command not encoded? Remember also elif below.
-        cmd = [command] + [encode_to_system(i) for i in args]
-        if use_shell and args:
-            cmd = subprocess.list2cmdline(cmd)
-        elif use_shell:
-            cmd = command
-        return cmd
+        command = [encode_to_system(item) for item in [command] + list(args)]
+        if not use_shell:
+            return command
+        if args:
+            return subprocess.list2cmdline(command)
+        return command[0]
 
     # TODO: process_is_running vs is_process_running
     def process_is_running(self, handle=None):
@@ -490,9 +490,9 @@ class ExecutionResult(object):
 
     def _construct_stdout(self):
         if not self.stdout_path:
-            return self._process.stdout.read()
+            return decode_from_system(self._process.stdout.read())
         with open(self.stdout_path, 'r') as f:
-            return f.read()
+            return decode_from_system(f.read())
 
     @property
     def stderr(self):
@@ -519,14 +519,13 @@ exit_code   : %d""" % (self.stdout_path, self.stderr_path, self.exit_code)
 class ProcessConfig(object):
 
     def __init__(self, cwd=None, shell=False, stdout=None, stderr=None,
-                 alias=None, **rest):
+                 alias=None, env=None, **rest):
         self.cwd = cwd or os.path.abspath(os.curdir)
         self.stdout_stream = self._new_stream(stdout, 'stdout')
         self.stderr_stream = self._get_stderr(stderr, stdout)
         self.shell = bool(shell)
         self.alias = alias
-        self.env = None
-        self._handle_rest(rest)
+        self.env = self._construct_env(env, rest)
 
     def _new_stream(self, name, postfix):
         if name == 'PIPE':
@@ -543,46 +542,17 @@ class ProcessConfig(object):
                 return self.stdout_stream
         return self._new_stream(stderr, 'stderr')
 
-    def _handle_rest(self, rest):
-        if not rest:
-            return
-        self.env = self._construct_env(rest)
-
-    # TODO: cleanup and fixes
-    # - if env is not given, individually given env values are overridden
-    #   by values with same names in os.environ!!
-    # - confusing to first set self.env here but then reset it by
-    #   the returned value
-    # - we probably should not encode items in the given env, only
-    #   the individually given name/value pairs
-    def _construct_env(self, rest):
-        new_env = dict()
-        for key, val in rest.iteritems():
-            key = encode_to_system(key)
-            if key == "env":
-                self.env = dict()
-                for k, v in val.iteritems():
-                    k = encode_to_system(k)
-                    v = encode_to_system(v)
-                    self.env[k] = v
-            elif "env:" == key[:4]:
-                new_env[key[4:]] = encode_to_system(val)
-            else:
+    def _construct_env(self, env, rest):
+        for key in rest:
+            if not key.startswith('env:'):
                 raise RuntimeError("'%s' is not supported by this keyword." % key)
-        if not self.env:
-            return dict(os.environ.copy().items()+new_env.items())
-        return dict(self._must_env_values().items() + self.env.items())
-
-    # TODO: Why is this done? Can't we just let the command fail if env is invalid?
-    # If this is considered useful, should add PATH to env elsewhere too.
-    # And that should be documented.
-    def _must_env_values(self):
-        must_values = {}
-        if os.sep != '/':
-            must_values['COMSPEC'] = os.environ['COMSPEC']
-            must_values['PATH'] = os.environ['PATH']
-            must_values['SYSTEMROOT'] = os.environ['SYSTEMROOT']
-        return must_values
+            if env is None:
+                env = os.environ.copy()
+            env[key[4:]] = rest[key]
+        if env:
+            env = dict((encode_to_system(key), encode_to_system(env[key]))
+                       for key in env)
+        return env
 
     # TODO: Is this needed?
     def __str__(self):
