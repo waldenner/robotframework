@@ -1,0 +1,41 @@
+*** Settings ***
+Suite Setup       Check Preconditions
+Library           Process
+Library           OperatingSystem
+Resource          resource.txt
+
+*** Test Cases ***
+Non-ascii in the command using shell=True
+    ${result}=   Run Process    python -c "print 'ööåöåöå'"   shell=True
+    Result should equal    ${result}    stdout=ööåöåöå
+
+Non-ascii in the command using shell=False
+    ${result}=   Run Process    python   -c     print "ööåöåöå"
+    Result should equal    ${result}    stdout=ööåöåöå
+
+Non-ascii in the command with given stdout
+    ${result}=   Run Process    python  -c    print "ööåöåöå"   shell=True   stdout=myfile.txt
+    Result should equal    ${result}    stdout=ööåöåöå
+    [Teardown]   Run Keyword And Ignore Error   Remove File   myfile.txt
+
+Newlines and trailing newline is removed
+    ${result}=   Run Process    python -c "print 'first line\\nsecond line\\nthird line'"   shell=True    cwd=${CURDIR}
+    Result should equal    ${result}    stdout=first line\nsecond line\nthird line
+
+Non-ascii in the command arguments
+    ${result}=   Run Process    python -c "import os; print os.getenv('varri', '-');"  shell=True  env:varri=Öoa
+    Should Be Equal        ${result.stdout.strip()}  Öoa
+
+Newline test using shell=True
+    ${result}=   Run Process    python -c "print 'hello'"   shell=True
+    Result should equal    ${result}    stdout=hello
+
+Newline test using shell=False
+    ${result}=   Run Process    python  -c   print "hello"
+    Result should equal    ${result}    stdout=hello
+
+*** Keywords ***
+Check Preconditions
+    ${is_ok}=   Evaluate   sys.version_info >= (2,6)  sys
+    Run Keyword If  not ${is_ok}    Set Suite Metadata  info   precondition_fail
+    Run Keyword If  not ${is_ok}    Fail
