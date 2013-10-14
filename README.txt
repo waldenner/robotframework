@@ -1,3 +1,29 @@
+This is a Robot Framework 2.8.x fork
+with additional support for \**kwargs in Dynamic Test Libraries.
+
+- ``get_keyword_arguments`` methods
+  may return an additional \** argument
+  to define a Keyword's \**kwargs support::
+
+    return ['arg', '*varargs', '**kwargs']
+
+- ``run_keyword`` methods
+  just need an additional argument to support Keywords with \**kwargs::
+
+    def run_keyword(self, name, args, kwargs):
+        ...
+
+A separate branch adds Python 3.x compatibility:
+
+https://bitbucket.org/userzimmermann/robotframework/commits/branch/python3
+
+There is also a branch with additional support for \**kwargs in User Keywords:
+
+https://bitbucket.org/userzimmermann/robotframework/commits/branch/userkwargs
+
+-- Stefan Zimmermann
+
+
 Robot Framework
 ===============
 
