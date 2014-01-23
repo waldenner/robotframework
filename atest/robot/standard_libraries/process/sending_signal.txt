@@ -1,0 +1,34 @@
+*** Settings ***
+Suite Setup      Run Tests    ${EMPTY}  standard_libraries/process/sending_signal.txt
+Force Tags       regression    pybot    jybot
+Test Setup       Check Preconditions
+Resource         atest_resource.txt
+
+*** Test Cases ***
+Sending INT signal
+    Check Test Case    ${TESTNAME}
+
+Sending SIGINT signal
+    Check Test Case    ${TESTNAME}
+
+Sending INT signal as a text number
+    Check Test Case    ${TESTNAME}
+
+Sending INT signal as a number
+    Check Test Case    ${TESTNAME}
+
+Send other well-known signals
+    Check Test Case    ${TESTNAME}
+
+Sending an unknown signal
+    Check Test Case    ${TESTNAME}
+
+Sending signal to a process with a handle
+    Check Test Case    ${TESTNAME}
+
+Sending signal to a process with a wrong handle
+    Check Test Case    ${TESTNAME}
+
+*** Keywords ***
+Check Preconditions
+    Run Keyword If   '${SUITE.metadata.get('info')}' == 'precondition_fail'   Fail  precondition fail  -regression
