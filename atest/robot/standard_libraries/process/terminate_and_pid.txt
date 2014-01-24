@@ -1,0 +1,51 @@
+*** Settings ***
+Suite Setup      Run Tests    ${EMPTY}    standard_libraries/process/terminate_and_pid.txt
+Test Setup       Check Preconditions
+Force Tags       regression    pybot    jybot
+Resource         atest_resource.txt
+
+*** Test Cases ***
+Run process does not change active process
+    Check Test Case    ${TESTNAME}
+
+Killing process
+    ${tc} =    Check Test Case    ${TESTNAME}
+    Check Log Message    ${tc.kws[1].msgs[0]}    Forcefully killing process.
+
+Terminating process
+    ${tc} =    Check Test Case    ${TESTNAME}
+    Check Log Message    ${tc.kws[1].msgs[0]}    Gracefully terminating process.
+
+Kill Process When Terminate Fails
+    ${tc} =    Check Test Case    ${TESTNAME}
+    Check Log Message    ${tc.kws[6].msgs[0]}    Gracefully terminating process.
+    Pass Execution If    ${WINDOWS}    Pass on Windows since there's no kill command.
+    Check Log Message    ${tc.kws[6].msgs[1]}    Graceful termination failed.
+    Check Log Message    ${tc.kws[6].msgs[2]}    Forcefully killing process.
+    Should Be True    ${tc.elapsedtime} >= 2000
+
+Terminate All Processes
+    ${tc} =    Check Test Case    ${TESTNAME}
+    Check Log Message   ${tc.kws[14].msgs[0]}    Gracefully terminating process.
+
+Terminate All Empties Cache
+    Check Test Case    ${TESTNAME}
+
+Terminating already terminated process is ok
+    Check Test Case    ${TESTNAME}
+
+Waiting for terminated process is ok
+    Check Test Case    ${TESTNAME}
+
+Pid
+    Check Test Case    ${TESTNAME}
+
+Getting PIDs in different ways should give same result
+    Check Test Case    ${TESTNAME}
+
+Lot of output
+    Check Test Case    ${TESTNAME}
+
+*** Keywords ***
+Check Preconditions
+    Run Keyword If   '${SUITE.metadata.get('info')}' == 'precondition_fail'   Fail  precondition fail  -regression
