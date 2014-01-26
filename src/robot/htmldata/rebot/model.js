@@ -33,6 +33,9 @@ window.model = (function () {
         suite.findSuiteByName = function (name) {
             return findSuiteByName(suite, name);
         };
+        suite.findSuiteByPattern = function (pattern) {
+            return findSuiteByPattern(suite, pattern);
+        };
         suite.allTests = function () {
             return suite.searchTests(function (test) {
                 return true;
@@ -77,6 +80,18 @@ window.model = (function () {
         var subSuites = suite.suites();
         for (var i in subSuites) {
             var match = findSuiteByName(subSuites[i], name);
+            if (match)
+                return match;
+        }
+        return null;
+    }
+
+     function findSuiteByPattern(suite, pattern) {
+        if (util.Matcher(pattern).matches(suite.fullName.toLowerCase()))
+            return suite;
+        var subSuites = suite.suites();
+        for (var i in subSuites) {
+            var match = findSuiteByPattern(subSuites[i], pattern);
             if (match)
                 return match;
         }
