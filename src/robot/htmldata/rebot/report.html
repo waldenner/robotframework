@@ -172,6 +172,9 @@ function tagDetailSelected(name) {
     var tag = util.filter(window.testdata.statistics().tag, function (tag) {
         return tag.label == name;
     })[0];
+    if (!tag) {
+        tag = {'combined': name};
+    }
     renderTagDetails(tag);
     updatePrintSelector(name, tag.info);
     scrollToSelector('tag_'+name);
@@ -186,8 +189,23 @@ function renderTagSelector(name) {
 
 function renderTagDetails(tag) {
     var tests = getTestsHavingTag(tag);
-    if (tag)
+    if (tag) {
         tag.totalTime = calculateTotalTime(tests);
+        if (!tag.label){
+            if (tests.length > 0) {
+                tag.total = tests.length;
+                tag.pass = calculatePassed(tests, false);
+                tag.fail = tag.total - tag.pass;
+            } else {
+                tag.total = 0;
+                tag.pass = 0;
+                tag.fail = 0;
+            }
+        }
+        tag.critical = calculateCritical(tests);
+        tag.criticalPassed = calculatePassed(tests, true);
+        tag.criticalFailed = tag.critical - tag.criticalPassed;
+    }
     $.tmpl('tagOrTotalDetailsTemplate', tag).appendTo('#details-header');
     drawTestDetailsTable(tests, true);
 }
@@ -210,6 +228,9 @@ function renderSuiteSelector(id) {
 function renderSuiteDetails(id) {
     window.testdata.ensureLoaded(id, function (ids) {
         var suite = window.testdata.findLoaded(id);
+        if (!suite) {
+            suite = window.testdata.suite().findSuiteByPattern(id)
+        }
         var opts = {logURL: window.settings.logURL};
         $.tmpl('suiteDetailsTemplate', suite, opts).appendTo('#details-header');
         drawTestDetailsTable(suite.allTests(), false);
@@ -255,7 +276,8 @@ function sortByStatus(t1, t2) {
 function getTestsHavingTag(tag) {
     if (!tag)
         return [];
-    return window.testdata.suite().searchTestsByTag(tag).sort(sortByStatus);
+    var tests = window.testdata.suite().searchTestsByTag(tag).sort(sortByStatus);
+    return tests;
 }
 
 function getTotalTests(name) {
@@ -269,6 +291,26 @@ function calculateTotalTime(tests) {
     for (var i = 0, len = tests.length; i < len; i++)
         total += tests[i].times.elapsedMillis;
     return util.formatElapsed(total);
+}
+
+function calculatePassed(tests, isCritical) {
+    var total = 0;
+    for (var i = 0, len = tests.length; i < len; i++) {
+        if (tests[i].status === 'PASS') {
+            if (!isCritical || tests[i].isCritical)
+                    total++;
+        }
+    }
+    return total;
+}
+
+function calculateCritical(tests) {
+    var total = 0;
+    for (var i = 0, len = tests.length; i < len; i++) {
+        if(tests[i].isCritical)
+            total++;
+    }
+    return total;
 }
 
 function renderTestDetails(sortByStatus, target) {
@@ -473,6 +515,16 @@ function hideHiddenDetailsColumns(elem) {
       </td>
       <td id="print-selector"></td>
     </tr>
+    <tr id="search">
+      <th>Search pattern:</th>
+      <td id="normal-search">
+        <form>
+          <input id="search-field" type="text" value="${selected}">
+          <input type="submit" value="Search" onclick="tagDetailSelected($('#search-field').val())">
+        </form>
+      </td>
+      <td id="print-search"></td>
+    </tr>
   </table>
 </script>
 
@@ -494,13 +546,26 @@ function hideHiddenDetailsColumns(elem) {
       </td>
       <td id="print-selector"></td>
     </tr>
+    <tr id="search">
+      <th>Search pattern:</th>
+      <td id="normal-search">
+        <form>
+          <input id="search-field" type="text" value="${selected}">
+          <input type="submit" value="Search" onclick="suiteDetailSelected($('#search-field').val())">
+        </form>
+      </td>
+      <td id="print-search"></td>
+    </tr>
   </table>
 </script>
 
 <script type="text/x-jquery-tmpl" id="tagOrTotalDetailsTemplate">
   <tr>
     <th>Status:</th>
-    <td>${total} total, ${pass} passed, {{if fail}}<span class="fail">${fail} failed</span>{{else}}<span class="pass">0 failed</span>{{/if}}</td>
+    <td>
+        ${critical} critical test, ${criticalPassed} passed, <span class="{{if criticalFailed}}fail{{else}}pass{{/if}}">${criticalFailed} failed</span><br>
+        ${total} total, ${pass} passed, {{if fail}}<span class="fail">${fail} failed</span>{{else}}<span class="pass">0 failed</span>{{/if}}
+    </td>
   </tr>
   {{if doc}}
   <tr>
