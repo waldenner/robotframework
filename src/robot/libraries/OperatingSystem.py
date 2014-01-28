@@ -795,12 +795,13 @@ class OperatingSystem:
 
     def _prepare_list_of_source_files(self, destination, *sources):
         destination, dest_is_dir = self._normalize_dest(destination)
+        if not dest_is_dir and os.path.isfile(destination):
+            raise RuntimeError("Destination can not be an existing file '%s'" % destination)
+        if not os.path.isdir(destination):
+            os.makedirs(destination)
         source_files = []
         for source in sources:
-            files_matching_pattern = glob.glob(source)
-            if len(files_matching_pattern) > 1 and not dest_is_dir:
-                raise RuntimeError("Several files match the pattern '%s' and will overwrite the single destination file." % source)
-            source_files.extend(files_matching_pattern)
+            source_files.extend(glob.glob(source))
         return source_files
 
     def _prepare_for_move_or_copy(self, source, dest):
