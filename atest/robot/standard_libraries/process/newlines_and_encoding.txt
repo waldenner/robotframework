@@ -1,0 +1,33 @@
+*** Settings ***
+Suite Setup      Run Tests    ${EMPTY}    standard_libraries/process/newlines_and_encoding.txt
+Force Tags       regression    pybot    jybot
+Resource         process_resource.txt
+Test Setup       Check Precondition
+
+*** Test Cases ***
+Non-ascii in command using shell=True
+    Check Test Case    ${TESTNAME}
+
+Non-ascii in command using shell=False
+    Check Test Case    ${TESTNAME}
+
+Non-ascii in command and output using shell=True
+    Check Test Case    ${TESTNAME}
+
+Non-ascii in command and output using shell=False
+    Check Test Case    ${TESTNAME}
+
+Non-ascii in command and output with given stdout
+    Check Test Case    ${TESTNAME}
+
+Non-ascii in environment variables
+    Check Test Case    ${TESTNAME}
+
+Newlines and trailing newline is removed
+    Check Test Case    ${TESTNAME}
+
+Newline test using shell=True
+    Check Test Case    ${TESTNAME}
+
+Newline test using shell=False
+    Check Test Case    ${TESTNAME}
